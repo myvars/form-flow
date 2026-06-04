@@ -6,6 +6,8 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-04
+
 ### Added
 
 - Design-neutral **default templates** (`templates/shared/form_flow/*`) so the flows render out of the
@@ -13,7 +15,7 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
   so an app overrides any default by providing its own file at the same path. Non-breaking: existing
   apps with their own `shared/form_flow/*` templates are unaffected (theirs win).
 
-## [1.0.0]
+## [1.0.0] - 2026-06-04
 
 ### Added
 
