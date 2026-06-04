@@ -5,7 +5,7 @@
     "license": "proprietary",
     "require": {
         "php": ">=8.5",
-        "pagerfanta/pagerfanta": "^4",
+        "pagerfanta/core": "^4",
         "symfony/config": "^8.1",
         "symfony/dependency-injection": "^8.1",
         "symfony/form": "^8.1",
