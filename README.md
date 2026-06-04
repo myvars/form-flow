@@ -83,4 +83,4 @@ composer cs          # php-cs-fixer (dry-run)
 
 ## License
 
-Proprietary. See [LICENSE](LICENSE).
+Released under the [MIT License](LICENSE).

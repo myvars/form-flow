@@ -3,7 +3,7 @@
     "description": "Generic Symfony controller-flow coordinators (Form/Action/Confirm/Search/InlineEdit) — the FormFlow pattern.",
     "type": "symfony-bundle",
     "keywords": ["symfony", "bundle", "controller", "form", "turbo", "crud", "hotwire"],
-    "license": "proprietary",
+    "license": "MIT",
     "authors": [
         {
             "name": "Adam Ashmore",
