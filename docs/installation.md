@@ -73,8 +73,9 @@ services:
     MyVars\FormFlow\Contract\FlasherInterface: '@App\Shared\UI\Http\FlashMessenger'
 ```
 
-## 4. Provide the templates
+## 4. Templates (optional)
 
-The bundle ships no Twig. Create the templates it renders (and the variables it passes) as described in
-the **[Template contract](templates.md)** — `templates/shared/form_flow/base.html.twig` and the three
-`inline_edit_*` templates.
+The bundle ships **design-neutral default templates**, so the flows render out of the box — nothing is
+required here. To style them, override any by providing your own at the same path
+(`templates/shared/form_flow/...`); your app's `templates/` wins. See the **[templates guide](templates.md)**
+for the full list and the variables each receives.
