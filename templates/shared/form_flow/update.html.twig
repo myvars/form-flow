@@ -1,0 +1,14 @@
+{#
+    Generic update form (design-neutral reference). Override per entity if you need a
+    custom layout. Variables: flowModel, form, routes (FlowRoutes).
+#}
+<h1>Edit {{ flowModel|default('item') }}</h1>
+
+{{ form_start(form) }}
+    {{ form_widget(form) }}
+    <button type="submit">Save</button>
+{{ form_end(form) }}
+
+{% if routes.index|default(null) %}
+    <p><a href="{{ path(routes.index) }}">Back to list</a></p>
+{% endif %}

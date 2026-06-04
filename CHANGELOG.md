@@ -8,6 +8,15 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ### Added
 
+- Design-neutral **default templates** (`templates/shared/form_flow/*`) so the flows render out of the
+  box. The bundle registers them in Twig's main namespace at lower priority than the app's `templates/`,
+  so an app overrides any default by providing its own file at the same path. Non-breaking: existing
+  apps with their own `shared/form_flow/*` templates are unaffected (theirs win).
+
+## [1.0.0]
+
+### Added
+
 - Initial release, extracted from the in-house application skeleton.
 - Five flow coordinators: `FormFlow`, `ActionFlow`, `ConfirmFlow`, `SearchFlow`, `InlineEditFlow`.
 - `View\` value objects: `FlowContext`, `FlowModel`, `FlowRoutes`, `FormOperation`, `TemplateContext`.

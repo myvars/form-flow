@@ -39,7 +39,9 @@ ports — never on application code. The consuming app supplies two things:
 
 - **Adapters** for the ports (`ResultInterface`, `RedirectTargetInterface`, `FlasherInterface`,
   `SearchCriteriaInterface`), which Symfony autowires by interface.
-- **Templates** — the bundle ships no Twig; it renders documented template paths the app provides.
+- **Templates** — the bundle ships **design-neutral defaults** so flows render out of the box; your app
+  overrides any of them by placing its own styled version at the same `templates/shared/form_flow/...`
+  path (your `templates/` wins). See [docs/templates.md](docs/templates.md).
 
 This keeps the flows decoupled from your domain, your DTOs and your design system.
 

@@ -1,0 +1,15 @@
+{#
+    FormFlow default base template (design-neutral).
+
+    Dispatcher for all FormFlow pages: renders the entity-specific operation template
+    if the app provides one, else the generic operation default, else `missing`.
+
+    Override by placing your own at templates/shared/form_flow/base.html.twig.
+
+    Variables: flowModel, flowModelPlural, flowOperation, template, routes (FlowRoutes).
+#}
+{% if flowOperation|default(null) is null %}
+    {{ include([template, 'shared/form_flow/missing.html.twig']) }}
+{% else %}
+    {{ include([template, 'shared/form_flow/' ~ flowOperation ~ '.html.twig', 'shared/form_flow/missing.html.twig']) }}
+{% endif %}
