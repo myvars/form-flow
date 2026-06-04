@@ -1,12 +1,11 @@
 # Ports & adapters
 
-FormFlow refuses to know anything about your application. No peeking at your `Result` class, no opinions
-about your flash messages. Instead it defines four tiny **ports** (interfaces in
-`MyVars\FormFlow\Contract\`) and politely asks you to supply an **adapter** for each. Symfony wires them
-up; you write maybe forty lines, once.
+FormFlow does not depend on your application's classes. Instead it defines four small **ports**
+(interfaces in `MyVars\FormFlow\Contract\`) and expects the application to supply an **adapter** for
+each. Symfony wires them up; you implement each one once.
 
-Why bother? Because it means the package can be upgraded, tested and reused without ever reaching into
-your domain — and your domain never has to import a vendor's DTO. Good fences, good neighbours.
+This keeps the package upgradeable, testable and reusable without reaching into your domain, and means
+your domain never has to import a vendor DTO.
 
 | Port | What it represents | You usually already have this |
 |------|--------------------|-------------------------------|
@@ -15,9 +14,9 @@ your domain — and your domain never has to import a vendor's DTO. Good fences,
 | [`FlasherInterface`](#flasher) | user feedback messages | your flash helper |
 | [`SearchCriteriaInterface`](#criteria) | paging/sort inputs | your search criteria base |
 
-> **The lazy path:** if a port has exactly one implementation in your app, Symfony auto-aliases the
-> interface to it and you configure *nothing*. Explicit aliases (shown below) are only needed when you
-> have more than one candidate and Symfony, quite reasonably, refuses to guess.
+> **Single implementation:** if a port has exactly one implementation in your app, Symfony auto-aliases
+> the interface to it and no configuration is needed. Explicit aliases (shown below) are only required
+> when more than one candidate exists.
 
 ---
 
@@ -36,8 +35,8 @@ interface ResultInterface
 }
 ```
 
-The trick: keep your existing `Result` exactly as it is and just *add* the getters. Nothing that already
-reads `$result->ok` or calls `Result::ok()` needs to change.
+Keep your existing `Result` as it is and add the getters. Existing code that reads `$result->ok` or
+calls `Result::ok()` is unaffected.
 
 ```php
 use MyVars\FormFlow\Contract\RedirectTargetInterface;
@@ -63,7 +62,7 @@ final readonly class Result implements ResultInterface
         return new self(false, $message, $payload);
     }
 
-    // --- the port, satisfied without disturbing anything above ---
+    // --- the port ---
     public function isOk(): bool { return $this->ok; }
     public function message(): ?string { return $this->message; }
     public function redirect(): ?RedirectTargetInterface { return $this->redirect; }
@@ -77,8 +76,8 @@ final readonly class Result implements ResultInterface
 <a id="redirect"></a>
 ## `RedirectTargetInterface`
 
-Returned inside a successful `Result` when a handler wants the flow to land somewhere specific instead of
-the default success route — "you created a thing, now go look at the thing."
+Returned inside a successful `Result` when a handler wants the flow to redirect somewhere specific
+instead of the default success route (for example, to the newly created entity's show page).
 
 ```php
 interface RedirectTargetInterface
@@ -115,7 +114,8 @@ final readonly class RedirectTarget implements RedirectTargetInterface
 <a id="flasher"></a>
 ## `FlasherInterface`
 
-How the flows tell your user that things went well (or didn't). Three methods, `null` messages ignored:
+Used by the flows to surface success, warning and error messages to the user. Three methods; `null`
+messages are ignored:
 
 ```php
 interface FlasherInterface
@@ -146,7 +146,7 @@ final class FlashMessenger implements FlasherInterface
 
     public function error(Request $request, ?string $message): void
     {
-        $this->add($request, 'danger', $message);   // Bootstrap calls red "danger"; we don't argue
+        $this->add($request, 'danger', $message);   // 'danger' aligns with Bootstrap's alert class
     }
 
     private function add(Request $request, string $type, ?string $message): void
@@ -173,9 +173,9 @@ services:
 <a id="criteria"></a>
 ## `SearchCriteriaInterface`
 
-The paging/sort inputs `SearchFlow` needs. The elegant move here is to make your **existing** search
-criteria interface `extends` the port — every criteria class, repository and reader you already have
-keeps working untouched, and the flow can type against the port:
+The paging/sort inputs `SearchFlow` needs. Make your **existing** search criteria interface `extends` the
+port: every criteria class, repository and reader you already have keeps working unchanged, and the flow
+can type against the port:
 
 ```php
 interface SearchCriteriaInterface
@@ -200,5 +200,5 @@ interface SearchCriteriaInterface extends FormFlowSearchCriteriaInterface
 ```
 
 Your concrete criteria (e.g. `TaskSearchCriteria`) already implement this interface, so they satisfy the
-port for free. Your repositories keep returning a Pagerfanta adapter from `findByCriteria()`; the flow
-does the rest.
+port automatically. Your repositories keep returning a Pagerfanta adapter from `findByCriteria()`; the
+flow handles pagination.

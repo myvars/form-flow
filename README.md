@@ -5,8 +5,7 @@
 **Thin controllers, consistent flows.** `myvars/form-flow` is a small Symfony bundle that factors the
 repetitive parts of CRUD-style controllers — form handling, validation feedback, CSRF-guarded
 confirmation, pagination, Turbo-aware redirects — into five reusable *flow* coordinators. Your
-controller actions stay one call long, and the fifteenth "create" action you write this year looks
-exactly like the first.
+controller actions stay one call long, and every create/update/delete action follows the same shape.
 
 ```php
 #[Route('/task/new', name: 'app_demo_task_new', methods: ['GET', 'POST'])]
@@ -36,8 +35,7 @@ public function new(Request $request, CreateTaskMapper $mapper, CreateTaskHandle
 ## Design
 
 The package owns **logic only**. It depends on framework packages, Pagerfanta and its own `Contract\`
-ports — never on application code. It has never heard of your `Result` class and would like to keep it
-that way. The consuming app supplies two things:
+ports — never on application code. The consuming app supplies two things:
 
 - **Adapters** for the ports (`ResultInterface`, `RedirectTargetInterface`, `FlasherInterface`,
   `SearchCriteriaInterface`), which Symfony autowires by interface.

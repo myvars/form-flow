@@ -1,8 +1,8 @@
 # FormFlow documentation
 
 `myvars/form-flow` factors the repetitive mechanics of CRUD-style Symfony controllers into five
-reusable *flow* coordinators, so controller actions stay thin and consistent — and you stop
-copy-pasting the same "handle form, flash, redirect" dance into every action.
+reusable *flow* coordinators, so controller actions stay thin and consistent instead of repeating the
+same handle-form, flash and redirect logic in every action.
 
 ## Contents
 

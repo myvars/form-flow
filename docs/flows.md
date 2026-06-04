@@ -1,8 +1,8 @@
 # Using the flows
 
 Every flow is a stateless service you type-hint in a controller action. Each takes a **`FlowContext`**
-describing the run — think of it as the flow's stage directions. This page shows a complete,
-copy-pasteable example for all five, then documents `FlowContext` and `FlowModel`. Copy, rename, ship.
+describing the run. This page shows a complete, copy-pasteable example for all five, then documents
+`FlowContext` and `FlowModel`.
 
 - [FormFlow — create & update](#formflow)
 - [ActionFlow — state transitions](#actionflow)

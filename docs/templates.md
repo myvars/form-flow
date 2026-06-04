@@ -1,11 +1,11 @@
 # Template contract
 
-The bundle ships **no Twig**. This is on purpose: your buttons, your cards, your dialogs, your Tailwind
-classes — a vendor package has no business shipping any of that. Instead the flows render a handful of
-template *paths* that your app provides, and pass a documented set of variables. Implement these once
-and every flow has a consistent UI.
+The bundle ships **no Twig**. This is deliberate: buttons, cards, dialogs and CSS classes belong to your
+application's design system, not a vendor package. Instead the flows render a small set of template
+*paths* that your app provides, and pass a documented set of variables. Implement these once and every
+flow renders with a consistent UI.
 
-Think of it as an interface, but for markup.
+It is, in effect, an interface for your markup.
 
 ## Required templates
 
@@ -70,7 +70,7 @@ token to the action with `confirmKey`:
 {# demo/task/delete.html.twig — rendered for the confirm step #}
 <form method="post" action="{{ path(routes.delete, { id: result.id }) }}">
     <input type="hidden" name="_token" value="{{ csrf_token(confirmKey ~ result.id) }}">
-    <p>Delete <strong>{{ result.title }}</strong>? This cannot be undone (the usual ominous warning).</p>
+    <p>Delete <strong>{{ result.title }}</strong>? This cannot be undone.</p>
     <button type="submit">Delete</button>
 </form>
 ```
@@ -102,4 +102,4 @@ as `context.entity` (or under your `entityVarName`).
 </turbo-stream>
 ```
 
-That's the whole contract. Style it however you like — the package will never know, and never judge.
+That is the whole contract. Style the templates to match your application.
