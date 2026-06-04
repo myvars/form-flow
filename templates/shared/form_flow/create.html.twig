@@ -1,0 +1,18 @@
+{#
+    Generic create form (design-neutral reference).
+
+    Symfony renders the whole form, so this works for any entity. Override per entity at
+    templates/{context}/{entity}/create.html.twig, or globally here.
+
+    Variables: flowModel, form, routes (FlowRoutes).
+#}
+<h1>New {{ flowModel|default('item') }}</h1>
+
+{{ form_start(form) }}
+    {{ form_widget(form) }}
+    <button type="submit">Save</button>
+{{ form_end(form) }}
+
+{% if routes.index|default(null) %}
+    <p><a href="{{ path(routes.index) }}">Back to list</a></p>
+{% endif %}

@@ -1,0 +1,25 @@
+{#
+    Generic index (design-neutral reference).
+
+    A generic template can't know your entity's columns, so this default only shows the
+    result count and pagination. Override per entity at
+    templates/{context}/{entity}/index.html.twig to render your rows.
+
+    Variables: flowModelPlural, results (Pagerfanta), routes (FlowRoutes).
+#}
+<h1>{{ flowModelPlural|default(flowModel|default('Results')) }}</h1>
+
+{% if routes.new|default(null) %}
+    <p><a href="{{ path(routes.new) }}">New</a></p>
+{% endif %}
+
+<p>{{ results.nbResults }} result(s) — page {{ results.currentPage }} of {{ results.nbPages }}.</p>
+
+{% if results.haveToPaginate %}
+    <p>
+        {% if results.hasPreviousPage %}<a href="?page={{ results.previousPage }}">Previous</a>{% endif %}
+        {% if results.hasNextPage %}<a href="?page={{ results.nextPage }}">Next</a>{% endif %}
+    </p>
+{% endif %}
+
+<p><em>Override this template to render your rows.</em></p>

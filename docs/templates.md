@@ -1,20 +1,46 @@
-# Template contract
+# Templates
 
-The bundle ships **no Twig**. This is deliberate: buttons, cards, dialogs and CSS classes belong to your
-application's design system, not a vendor package. Instead the flows render a small set of template
-*paths* that your app provides, and pass a documented set of variables. Implement these once and every
-flow renders with a consistent UI.
+The bundle ships **design-neutral default templates** so the flows render out of the box, and lets you
+**override any of them** with your own styled versions. The defaults are deliberately plain (no CSS
+framework, no components) — they prove the contract and serve as a reference; your app supplies the look.
 
-It is, in effect, an interface for your markup.
+## How overriding works
 
-## Required templates
+The bundle registers its `templates/` directory in Twig's **main namespace at lower priority than your
+app's `templates/`**. So for any template the flows render, Twig resolves **your** file first if it
+exists, and falls back to the bundle's default otherwise.
+
+To override, just create the file at the same path in your app:
+
+```
+templates/shared/form_flow/base.html.twig      ← your version wins
+templates/shared/form_flow/create.html.twig    ← your version wins
+…
+```
+
+No configuration, no `templates/bundles/...` indirection — same path, your `templates/` wins.
+
+## Templates the flows render
+
+All ship with a working default; override the ones you want to style.
 
 | Path | Rendered by | Variables |
 |------|-------------|-----------|
-| `shared/form_flow/base.html.twig` | `FormFlow`, `ConfirmFlow`, `SearchFlow` | see below |
+| `shared/form_flow/base.html.twig` | `FormFlow`, `ConfirmFlow`, `SearchFlow` | dispatcher — see below |
+| `shared/form_flow/{create,update,filter}.html.twig` | `base` (per operation) | `form`, `flowModel`, `routes` |
+| `shared/form_flow/delete.html.twig` | `base` (delete confirm) | `result`, `confirmKey`, `routes` |
+| `shared/form_flow/index.html.twig` | `base` (search) | `results` (Pagerfanta), `routes` |
+| `shared/form_flow/missing.html.twig` | `base` (final fallback) | — |
 | `shared/form_flow/inline_edit_display.html.twig` | `InlineEditFlow` (display) | `context` |
 | `shared/form_flow/inline_edit_form.html.twig` | `InlineEditFlow` (edit) | `form`, `context`, `cancelUrl` |
 | `shared/form_flow/inline_edit_success.stream.html.twig` | `InlineEditFlow` (saved) | `context` |
+
+`base` dispatches to the entity-specific template first (`{templateDir}/{op}.html.twig`, e.g.
+`demo/task/create.html.twig`), then to the generic `shared/form_flow/{op}.html.twig`, then to `missing`.
+So per-entity templates always win; the generic defaults are the fallback.
+
+> **Note:** the default `delete` and `index` templates assume the entity exposes `id`. Apps keyed on a
+> different identifier (e.g. `public_id`) should override those two.
 
 ## Variables passed to `base.html.twig`
 

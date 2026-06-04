@@ -1,0 +1,9 @@
+{#
+    Generic filter form (design-neutral reference). Variables: flowModel, form.
+#}
+<h1>Filter {{ flowModelPlural|default(flowModel|default('results')) }}</h1>
+
+{{ form_start(form) }}
+    {{ form_widget(form) }}
+    <button type="submit">Filter</button>
+{{ form_end(form) }}

@@ -1,0 +1,13 @@
+{#
+    Inline-edit form (design-neutral reference). Plain unstyled field + Save/Cancel.
+    Override at templates/shared/form_flow/inline_edit_form.html.twig for styling.
+
+    Variables: form, context (InlineEditContext), cancelUrl.
+#}
+<turbo-frame id="{{ context.frameId }}">
+    {{ form_start(form) }}
+        {{ form_widget(form) }}
+        <button type="submit">Save</button>
+        <a href="{{ cancelUrl }}">Cancel</a>
+    {{ form_end(form) }}
+</turbo-frame>

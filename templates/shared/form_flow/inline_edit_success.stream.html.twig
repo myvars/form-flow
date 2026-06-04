@@ -1,0 +1,12 @@
+{#
+    Inline-edit success (design-neutral). Replaces the frame with the refreshed display.
+    The default does not emit a flash stream (no app-template dependency); override to
+    append your own flash markup. Variables: context (InlineEditContext).
+#}
+<turbo-stream action="replace" target="{{ context.frameId }}">
+    <template>
+        {{ include(context.displayTemplate, context.displayTemplateVars|merge({
+            (context.entityVarName): context.entity
+        })) }}
+    </template>
+</turbo-stream>

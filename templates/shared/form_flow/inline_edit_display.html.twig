@@ -1,0 +1,7 @@
+{#
+    Inline-edit display (design-neutral). Renders the app's display partial inside the
+    Turbo Frame. Variables: context (InlineEditContext).
+#}
+{{ include(context.displayTemplate, context.displayTemplateVars|merge({
+    (context.entityVarName): context.entity
+})) }}

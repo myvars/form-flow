@@ -1,0 +1,19 @@
+{#
+    Generic delete confirmation (design-neutral reference).
+
+    The CSRF token is scoped to `confirmKey ~ result.id`, which is exactly what
+    ConfirmFlow::execute() validates. Assumes the entity exposes `id`; apps keyed on a
+    different identifier (e.g. public_id) should override this template.
+
+    Variables: flowModel, result (entity), confirmKey, routes (FlowRoutes).
+#}
+<h1>Delete {{ flowModel|default('item') }}?</h1>
+
+<form method="post" action="{{ path(routes.delete, {id: result.id}) }}">
+    <input type="hidden" name="_token" value="{{ csrf_token(confirmKey ~ result.id) }}">
+    <p>This action cannot be undone.</p>
+    <button type="submit">Delete</button>
+    {% if routes.index|default(null) %}
+        <a href="{{ path(routes.index) }}">Cancel</a>
+    {% endif %}
+</form>
