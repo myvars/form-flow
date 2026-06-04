@@ -1,0 +1,30 @@
+{
+    "name": "myvars/form-flow",
+    "description": "Generic Symfony controller-flow coordinators (Form/Action/Confirm/Search/InlineEdit) — the FormFlow pattern.",
+    "type": "symfony-bundle",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.5",
+        "pagerfanta/pagerfanta": "^4",
+        "symfony/config": "^8.1",
+        "symfony/dependency-injection": "^8.1",
+        "symfony/form": "^8.1",
+        "symfony/http-foundation": "^8.1",
+        "symfony/http-kernel": "^8.1",
+        "symfony/object-mapper": "^8.1",
+        "symfony/options-resolver": "^8.1",
+        "symfony/routing": "^8.1",
+        "symfony/security-csrf": "^8.1",
+        "twig/twig": "^3"
+    },
+    "autoload": {
+        "psr-4": {
+            "MyVars\\FormFlow\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    }
+}
