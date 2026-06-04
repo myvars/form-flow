@@ -1,4 +1,7 @@
 /vendor/
 /composer.lock
+/config/reference.php
+
+/.phpunit.cache/
 .php-cs-fixer.cache
 .phpunit.result.cache

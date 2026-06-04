@@ -2,7 +2,14 @@
     "name": "myvars/form-flow",
     "description": "Generic Symfony controller-flow coordinators (Form/Action/Confirm/Search/InlineEdit) — the FormFlow pattern.",
     "type": "symfony-bundle",
+    "keywords": ["symfony", "bundle", "controller", "form", "turbo", "crud", "hotwire"],
     "license": "proprietary",
+    "authors": [
+        {
+            "name": "Adam Ashmore",
+            "email": "adamashmore@me.com"
+        }
+    ],
     "require": {
         "php": ">=8.5",
         "pagerfanta/core": "^4",
@@ -15,16 +22,42 @@
         "symfony/options-resolver": "^8.1",
         "symfony/routing": "^8.1",
         "symfony/security-csrf": "^8.1",
+        "symfony/ux-turbo": "^3.1",
         "twig/twig": "^3"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/phpstan": "^2.2",
+        "phpstan/phpstan-symfony": "^2.0",
+        "phpunit/phpunit": "^13.1"
     },
     "autoload": {
         "psr-4": {
             "MyVars\\FormFlow\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "MyVars\\FormFlow\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "phpstan": "phpstan analyse",
+        "cs": "php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "php-cs-fixer fix"
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        }
+    },
     "minimum-stability": "dev",
     "prefer-stable": true,
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": false
+        }
     }
 }

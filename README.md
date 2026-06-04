@@ -1,55 +1,88 @@
-# myvars/form-flow
+# FormFlow
 
-Generic Symfony controller-flow coordinators — the **FormFlow** pattern. Thin controllers delegate
-to five flow types:
+[![CI](https://github.com/myvars/form-flow/actions/workflows/ci.yml/badge.svg)](https://github.com/myvars/form-flow/actions/workflows/ci.yml)
+
+**Thin controllers, consistent flows.** `myvars/form-flow` is a small Symfony bundle that factors the
+repetitive parts of CRUD-style controllers — form handling, validation feedback, CSRF-guarded
+confirmation, pagination, Turbo-aware redirects — into five reusable *flow* coordinators. Your
+controller actions stay one call long, and the fifteenth "create" action you write this year looks
+exactly like the first.
+
+```php
+#[Route('/task/new', name: 'app_demo_task_new', methods: ['GET', 'POST'])]
+public function new(Request $request, CreateTaskMapper $mapper, CreateTaskHandler $handler, FormFlow $flow): Response
+{
+    return $flow->form(
+        request: $request,
+        formType: TaskType::class,
+        data: new TaskForm(),
+        mapper: $mapper,      // form DTO -> command
+        handler: $handler,    // command -> ResultInterface
+        context: FlowContext::forCreate(FlowModel::create('demo', 'task')),
+    );
+}
+```
+
+## The five flows
 
 | Flow | Purpose |
 |------|---------|
-| `FormFlow` | Create/update with Symfony forms |
-| `ActionFlow` | State transitions (approve, complete, …) |
-| `ConfirmFlow` | Confirm-then-execute (delete, cancel, …) with CSRF |
-| `SearchFlow` | Paginated index pages |
-| `InlineEditFlow` | Inline field editing via Turbo Frames |
+| `FormFlow` | Create/update with Symfony forms — validate, map to a command, dispatch, flash, redirect |
+| `ActionFlow` | State transitions without a form (approve, complete, …) |
+| `ConfirmFlow` | Confirm-then-execute (delete, cancel, rewind, …) with per-action CSRF scoping |
+| `SearchFlow` | Paginated index pages from a Pagerfanta adapter |
+| `InlineEditFlow` | Single-field inline editing over Turbo Frames |
 
-The package owns only the **logic**. It depends on framework + Pagerfanta + its own `Contract\` ports —
-never on app code. The consuming app supplies **adapters** and **templates**.
+## Design
 
-## Install
+The package owns **logic only**. It depends on framework packages, Pagerfanta and its own `Contract\`
+ports — never on application code. It has never heard of your `Result` class and would like to keep it
+that way. The consuming app supplies two things:
+
+- **Adapters** for the ports (`ResultInterface`, `RedirectTargetInterface`, `FlasherInterface`,
+  `SearchCriteriaInterface`), which Symfony autowires by interface.
+- **Templates** — the bundle ships no Twig; it renders documented template paths the app provides.
+
+This keeps the flows decoupled from your domain, your DTOs and your design system.
+
+## Requirements
+
+- PHP 8.5+
+- Symfony 8.1+ (Form, HttpFoundation, Routing, Security CSRF, Twig, UX Turbo)
+
+## Installation
 
 ```bash
 composer require myvars/form-flow
 ```
 
-Enable the bundle (`config/bundles.php`):
+Enable the bundle (if Symfony Flex did not):
 
 ```php
-MyVars\FormFlow\FormFlowBundle::class => ['all' => true],
+// config/bundles.php
+return [
+    // ...
+    MyVars\FormFlow\FormFlowBundle::class => ['all' => true],
+];
 ```
 
-## Adapters the app must provide
+Then provide the port adapters and templates — see **[docs/installation.md](docs/installation.md)**.
 
-The flows depend on these ports (`MyVars\FormFlow\Contract\`). The app provides one implementation of
-each; Symfony autowires them by interface (single implementation → automatic alias, or alias explicitly):
+## Documentation
 
-| Port | App implements / extends with |
-|------|-------------------------------|
-| `ResultInterface` (`isOk()`, `message()`, `redirect()`) | the command-handler result DTO |
-| `RedirectTargetInterface` (`route()`, `params()`, `status()`) | the forced-redirect DTO |
-| `FlasherInterface` (`success/warning/error`) | the flash-message helper |
-| `SearchCriteriaInterface` (paging/sort getters) | the app's search-criteria interface `extends` this |
+- **[Installation & wiring](docs/installation.md)** — bundle setup, the adapters you implement, path-repo/Docker notes
+- **[Using the flows](docs/flows.md)** — a worked controller example for every flow, plus `FlowContext`/`FlowModel`
+- **[Ports & adapters](docs/adapters.md)** — implementing `Result`, `RedirectTarget`, `Flasher`, `SearchCriteria`
+- **[Template contract](docs/templates.md)** — required templates and the variables passed to them
 
-`InlineEditFlow` does **not** flush — the `onSave` callback owns persistence and returns whether anything
-changed. `SearchFlow::search()` takes a Pagerfanta `AdapterInterface` (e.g.
-`$repository->findByCriteria($criteria)`), so the package never touches the persistence layer.
+## Quality
 
-## Template contract (app-owned)
+```bash
+composer test       # PHPUnit — unit, flow and bundle-integration suites
+composer phpstan     # PHPStan level 7
+composer cs          # php-cs-fixer (dry-run)
+```
 
-The package ships no Twig. The app must provide these templates:
+## License
 
-- `shared/form_flow/base.html.twig` — rendered by Form/Action/Confirm/Search flows.
-- `shared/form_flow/inline_edit_display.html.twig`
-- `shared/form_flow/inline_edit_form.html.twig`
-- `shared/form_flow/inline_edit_success.stream.html.twig`
-
-Variables passed to `base.html.twig`: `flowModel`, `flowModelPlural`, `flowOperation`, `template`,
-`routes`, plus per-flow `result` / `results` / `form` / `confirmKey` / `flowBackLink` / `flowAllowDelete`.
+Proprietary. See [LICENSE](LICENSE).
