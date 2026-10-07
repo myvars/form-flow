@@ -167,7 +167,7 @@ save (`POST` → Turbo Stream). The **callback owns persistence** and reports wh
 ```php
 public function handleField(
     Request $request,
-    mixed $value,                          // current field value
+    mixed $value,                          // current field value, or a Closure returning it (see below)
     callable $onSave,                      // fn(mixed $value): bool  — apply + persist; return "changed?"
     InlineEditContext $context,
     array $formOptions = [],               // InlineFieldType options (constraints, field_type, …)
@@ -207,6 +207,41 @@ public function inlineTitle(Request $request, Task $task, InlineEditFlow $flow, 
 | `entityVarName` | derived from class | template variable name for the entity |
 | `displayTemplateVars` | `[]` | extra variables for the display template |
 | `successMessage` | `'Updated successfully'` | flash on change; `null` to disable |
+
+### Keeping other copies of the value in step
+
+A successful save replaces only the field's own Turbo Frame. If the same value also appears elsewhere
+on the page — a breadcrumb, a page heading — that copy would stay stale until a reload. To update it
+in the same response:
+
+1. Pass the current value as a **Closure** rather than a plain value. The flow calls it for the form's
+   starting value and again after `onSave`, so it knows what was actually stored:
+
+   ```php
+   return $flow->handleField(
+       request: $request,
+       value: fn () => $task->getTitle(),
+       onSave: function (mixed $value) use ($task, $flusher): bool { /* … */ },
+       context: InlineEditContext::create(frameId: 'inline-edit-task-' . $task->getId() . '-title', /* … */),
+   );
+   ```
+
+2. Mark each element that should follow the field with the inline edit's frame id:
+
+   ```twig
+   <h1 data-inline-edit-mirror="inline-edit-task-{{ task.id }}-title">{{ task.title }}</h1>
+   ```
+
+The success stream then updates every marked element with the stored value, escaped as text.
+
+- The value is **read back**, not taken from the submission, so if `onSave` trims or otherwise
+  normalises the input the mirrors show what was stored.
+- Only text-like values are mirrored (`string`, `int`, `float`, `Stringable`). A date, enum or related
+  entity needs formatting your application owns; override the success template and use its `value`
+  variable for those.
+- Only a `Closure` is treated as a reader. A plain string is always used as the value, even if it
+  happens to name a function.
+- With a plain value, nothing extra is sent and behaviour is unchanged.
 
 ---
 

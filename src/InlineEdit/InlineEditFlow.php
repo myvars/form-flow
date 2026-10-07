@@ -21,6 +21,9 @@ use Twig\Environment;
  * The onSave callback owns persistence (apply the value and flush) and returns
  * whether anything changed, so the flow stays out of the database.
  *
+ * Pass the current value as a Closure to have the flow read it again after saving
+ * and send it to elements outside the frame that mirror the field (see handleField()).
+ *
  * Usage:
  *   return $flow->handleField(
  *       request: $request,
@@ -56,6 +59,14 @@ final readonly class InlineEditFlow
      * owns persistence (apply the value and flush); return whether anything actually
      * changed to control the success flash (null/void is treated as changed).
      *
+     * The success response only replaces the field's own Turbo Frame. To keep other copies of
+     * the value on the page in step (a breadcrumb, a heading), pass $value as a Closure: the flow
+     * calls it for the form's starting value and again after onSave, and gives the stored result
+     * to the success template, which updates every element marked
+     * data-inline-edit-mirror="<frameId>". It is read back rather than taken from the submission
+     * so the mirrors show what was stored, not what was typed. Only text-like values are mirrored.
+     *
+     * @param mixed|\Closure(): mixed      $value       Current field value, or a Closure returning it
      * @param callable(mixed): (bool|null) $onSave      Apply the new value and persist; return whether it changed
      * @param array<string, mixed>         $formOptions Options for InlineFieldType (constraints, field_type, etc.)
      */
@@ -81,7 +92,11 @@ final readonly class InlineEditFlow
             unset($formOptions['constraints']);
         }
 
-        $form = $this->forms->create(InlineFieldType::class, new InlineFieldForm($value), $formOptions);
+        // Only a Closure is treated as a reader: a plain string value may happen to name a function.
+        $read = $value instanceof \Closure ? $value : null;
+        $current = $read !== null ? $read() : $value;
+
+        $form = $this->forms->create(InlineFieldType::class, new InlineFieldForm($current), $formOptions);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -90,7 +105,7 @@ final readonly class InlineEditFlow
                 $formData = $form->getData();
                 $changed = $onSave($formData->value);
 
-                return $this->renderSuccess($request, $context, $changed ?? true);
+                return $this->renderSuccess($request, $context, $changed ?? true, $read !== null ? $read() : null);
             } catch (\Throwable $e) {
                 $form->addError(new FormError($e->getMessage()));
             }
@@ -137,11 +152,14 @@ final readonly class InlineEditFlow
 
     /**
      * Render success Turbo Stream that replaces the frame with display.
+     *
+     * @param mixed $savedValue The value read back after saving, or null when the caller gave no reader
      */
     private function renderSuccess(
         Request $request,
         InlineEditContext $context,
         bool $changed = true,
+        mixed $savedValue = null,
     ): Response {
         // Add flash message only if something actually changed
         if ($changed && $context->successMessage !== null) {
@@ -150,10 +168,25 @@ final readonly class InlineEditFlow
 
         $html = $this->twig->render(self::SUCCESS_TEMPLATE, [
             'context' => $context,
+            'value' => $savedValue,
+            'mirrorText' => self::mirrorText($savedValue),
         ]);
 
         return new Response($html, Response::HTTP_OK, [
             'Content-Type' => 'text/vnd.turbo-stream.html; charset=UTF-8',
         ]);
+    }
+
+    /**
+     * The saved value as text for mirror elements, or null when it has no plain-text form
+     * (dates, enums, objects and arrays need formatting the application owns).
+     */
+    private static function mirrorText(mixed $savedValue): ?string
+    {
+        if (\is_string($savedValue) || \is_int($savedValue) || \is_float($savedValue) || $savedValue instanceof \Stringable) {
+            return (string) $savedValue;
+        }
+
+        return null;
     }
 }

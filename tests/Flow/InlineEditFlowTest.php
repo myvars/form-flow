@@ -9,6 +9,7 @@ use MyVars\FormFlow\InlineEdit\InlineEditFlow;
 use MyVars\FormFlow\InlineEdit\InlineFieldForm;
 use MyVars\FormFlow\Tests\Double\RecordingFlasher;
 use MyVars\FormFlow\Tests\Fixtures\SampleEntity;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
@@ -158,5 +159,143 @@ final class InlineEditFlowTest extends TestCase
 
         self::assertFalse($called, 'onSave must not run for an invalid submission');
         self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+    }
+
+    public function testClosureValueIsReadForTheFormAndAgainAfterSaving(): void
+    {
+        $request = Request::create('/sample/1/inline/name', 'POST');
+        $stored = 'Old Name';
+
+        $forms = $this->createMock(FormFactoryInterface::class);
+        $forms->expects($this->once())->method('create')
+            ->with($this->anything(), $this->callback(static fn (InlineFieldForm $data): bool => $data->value === 'Old Name'))
+            ->willReturn($this->formMock(true, true, '  new name  '));
+
+        $twig = $this->createMock(Environment::class);
+        $twig->expects($this->once())->method('render')
+            ->with(
+                'shared/form_flow/inline_edit_success.stream.html.twig',
+                // The stored value, not the submitted one, reaches the template.
+                $this->callback(static fn (array $vars): bool => $vars['value'] === 'New Name' && $vars['mirrorText'] === 'New Name'),
+            )
+            ->willReturn('<turbo-stream>ok</turbo-stream>');
+
+        $flow = new InlineEditFlow($forms, new RecordingFlasher(), $twig);
+
+        $flow->handleField(
+            $request,
+            static function () use (&$stored): string {
+                return $stored;
+            },
+            function (mixed $value) use (&$stored): bool {
+                $stored = ucwords(trim((string) $value)); // onSave normalises what was typed
+
+                return true;
+            },
+            $this->context(),
+        );
+
+        self::assertSame('New Name', $stored);
+    }
+
+    public function testPlainValueGivesTheTemplateNothingToMirror(): void
+    {
+        $request = Request::create('/sample/1/inline/name', 'POST');
+
+        $forms = $this->createStub(FormFactoryInterface::class);
+        $forms->method('create')->willReturn($this->formMock(true, true, 'New Name'));
+
+        $twig = $this->createMock(Environment::class);
+        $twig->expects($this->once())->method('render')
+            ->with($this->anything(), $this->callback(static fn (array $vars): bool => $vars['value'] === null && $vars['mirrorText'] === null))
+            ->willReturn('<turbo-stream>ok</turbo-stream>');
+
+        (new InlineEditFlow($forms, new RecordingFlasher(), $twig))
+            ->handleField($request, 'Old Name', fn ($v): bool => true, $this->context());
+    }
+
+    public function testStringValueNamingAFunctionIsNotCalled(): void
+    {
+        $request = Request::create('/sample/1/inline/name', 'GET', ['edit' => '1']);
+
+        $forms = $this->createMock(FormFactoryInterface::class);
+        $forms->expects($this->once())->method('create')
+            ->with($this->anything(), $this->callback(static fn (InlineFieldForm $data): bool => $data->value === 'phpversion'))
+            ->willReturn($this->formMock(false, false, 'phpversion'));
+
+        $twig = $this->createStub(Environment::class);
+        $twig->method('render')->willReturn('<form>edit</form>');
+
+        (new InlineEditFlow($forms, new RecordingFlasher(), $twig))
+            ->handleField($request, 'phpversion', fn ($v): bool => true, $this->context());
+    }
+
+    /**
+     * @return iterable<string, array{mixed, string|null}>
+     */
+    public static function savedValueProvider(): iterable
+    {
+        yield 'string' => ['Widget', 'Widget'];
+        yield 'empty string' => ['', ''];
+        yield 'int' => [42, '42'];
+        yield 'float' => [1.5, '1.5'];
+        yield 'stringable' => [new class implements \Stringable {
+            public function __toString(): string
+            {
+                return 'SKU-1';
+            }
+        }, 'SKU-1'];
+        yield 'null' => [null, null];
+        yield 'bool' => [true, null];
+        yield 'array' => [['a'], null];
+        yield 'date' => [new \DateTimeImmutable('2026-01-01'), null];
+    }
+
+    #[DataProvider('savedValueProvider')]
+    public function testOnlyTextLikeSavedValuesBecomeMirrorText(mixed $saved, ?string $expected): void
+    {
+        $request = Request::create('/sample/1/inline/name', 'POST');
+
+        $forms = $this->createStub(FormFactoryInterface::class);
+        $forms->method('create')->willReturn($this->formMock(true, true, 'typed'));
+
+        $twig = $this->createMock(Environment::class);
+        $twig->expects($this->once())->method('render')
+            ->with($this->anything(), $this->callback(static fn (array $vars): bool => $vars['value'] === $saved && $vars['mirrorText'] === $expected))
+            ->willReturn('<turbo-stream>ok</turbo-stream>');
+
+        $calls = 0;
+        $read = static function () use (&$calls, $saved): mixed {
+            // First call seeds the form (which holds a string); the second is the read-back.
+            return ++$calls === 1 ? 'typed' : $saved;
+        };
+
+        (new InlineEditFlow($forms, new RecordingFlasher(), $twig))
+            ->handleField($request, $read, fn ($v): bool => true, $this->context());
+
+        self::assertSame(2, $calls);
+    }
+
+    public function testInvalidPostDoesNotReadTheValueBack(): void
+    {
+        $request = Request::create('/sample/1/inline/name', 'POST');
+
+        $forms = $this->createStub(FormFactoryInterface::class);
+        $forms->method('create')->willReturn($this->formMock(true, false, ''));
+
+        $twig = $this->createStub(Environment::class);
+        $twig->method('render')->willReturn('<form>errors</form>');
+
+        $calls = 0;
+        $read = static function () use (&$calls): string {
+            ++$calls;
+
+            return 'Old';
+        };
+
+        (new InlineEditFlow($forms, new RecordingFlasher(), $twig))
+            ->handleField($request, $read, fn ($v): bool => true, $this->context());
+
+        self::assertSame(1, $calls);
     }
 }
