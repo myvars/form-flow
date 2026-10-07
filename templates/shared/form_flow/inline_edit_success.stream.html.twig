@@ -1,7 +1,12 @@
 {#
     Inline-edit success (design-neutral). Replaces the frame with the refreshed display.
     The default does not emit a flash stream (no app-template dependency); override to
-    append your own flash markup. Variables: context (InlineEditContext).
+    append your own flash markup.
+
+    Variables:
+    - context    (InlineEditContext)
+    - value      the stored value read back after saving, when the controller passed a Closure; else null
+    - mirrorText that value as text, or null when there is nothing to mirror
 #}
 <turbo-stream action="replace" target="{{ context.frameId }}">
     <template>
@@ -10,3 +15,10 @@
         })) }}
     </template>
 </turbo-stream>
+{# The frame only covers the field itself. Elements elsewhere on the page that show the same
+   value opt in with data-inline-edit-mirror="<frameId>" and are updated here. #}
+{% if mirrorText is defined and mirrorText is not null %}
+<turbo-stream action="update" targets="[data-inline-edit-mirror='{{ context.frameId }}']">
+    <template>{{ mirrorText }}</template>
+</turbo-stream>
+{% endif %}

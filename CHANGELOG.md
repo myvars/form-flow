@@ -6,6 +6,17 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+### Added
+
+- `InlineEditFlow::handleField()` accepts the current value as a **`Closure`**. The flow calls it for
+  the form's starting value and again after `onSave`, and passes the stored result to the success
+  template as `value`, plus `mirrorText` (that value as text, or `null` when it is not text-like).
+- The default `inline_edit_success.stream.html.twig` sends a second stream that updates every element
+  marked `data-inline-edit-mirror="<frameId>"`, so copies of the field outside its Turbo Frame (a
+  breadcrumb, a heading) no longer go stale after an inline edit. Non-breaking: with a plain (non-Closure)
+  value nothing extra is sent, and an app's own override of the template is unaffected until it adopts
+  the new variables.
+
 ## [1.1.0] - 2026-06-04
 
 ### Added

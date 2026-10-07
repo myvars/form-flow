@@ -33,7 +33,7 @@ All ship with a working default; override the ones you want to style.
 | `shared/form_flow/missing.html.twig` | `base` (final fallback) | — |
 | `shared/form_flow/inline_edit_display.html.twig` | `InlineEditFlow` (display) | `context` |
 | `shared/form_flow/inline_edit_form.html.twig` | `InlineEditFlow` (edit) | `form`, `context`, `cancelUrl` |
-| `shared/form_flow/inline_edit_success.stream.html.twig` | `InlineEditFlow` (saved) | `context` |
+| `shared/form_flow/inline_edit_success.stream.html.twig` | `InlineEditFlow` (saved) | `context`, `value`, `mirrorText` |
 
 `base` dispatches to the entity-specific template first (`{templateDir}/{op}.html.twig`, e.g.
 `demo/task/create.html.twig`), then to the generic `shared/form_flow/{op}.html.twig`, then to `missing`.
@@ -126,6 +126,17 @@ as `context.entity` (or under your `entityVarName`).
 <turbo-stream action="replace" target="{{ context.frameId }}">
     <template>{{ include(context.displayTemplate, context.displayTemplateVars) }}</template>
 </turbo-stream>
+{% if mirrorText is defined and mirrorText is not null %}
+<turbo-stream action="update" targets="[data-inline-edit-mirror='{{ context.frameId }}']">
+    <template>{{ mirrorText }}</template>
+</turbo-stream>
+{% endif %}
 ```
+
+`value` is the stored value read back after saving when the controller passed the value as a Closure
+(otherwise `null`); `mirrorText` is that value as text, or `null` when there is nothing to mirror. The
+second stream keeps copies of the field elsewhere on the page in step — see
+[Keeping other copies of the value in step](flows.md#inlineeditflow). If you override this template,
+keep that block to retain the behaviour.
 
 That is the whole contract. Style the templates to match your application.

@@ -94,5 +94,42 @@ final class DefaultTemplatesTest extends TestCase
     {
         $html = $this->twig()->render('shared/form_flow/inline_edit_success.stream.html.twig', ['context' => $this->inlineContext()]);
         self::assertStringContainsString('turbo-stream', $html);
+        self::assertStringNotContainsString('data-inline-edit-mirror', $html, 'apps rendering it with only `context` get no mirror stream');
+    }
+
+    public function testInlineEditSuccessStreamUpdatesMirrorsWithTheSavedValueAsText(): void
+    {
+        $html = $this->twig()->render('shared/form_flow/inline_edit_success.stream.html.twig', [
+            'context' => $this->inlineContext(),
+            'value' => 'A <b>bold</b> & co',
+            'mirrorText' => 'A <b>bold</b> & co',
+        ]);
+
+        self::assertStringContainsString('<turbo-stream action="replace" target="frame-1">', $html);
+        self::assertStringContainsString('<turbo-stream action="update" targets="[data-inline-edit-mirror=\'frame-1\']">', $html);
+        self::assertStringContainsString('<template>A &lt;b&gt;bold&lt;/b&gt; &amp; co</template>', $html);
+    }
+
+    public function testInlineEditSuccessStreamClearsMirrorsWhenTheSavedValueIsEmpty(): void
+    {
+        $html = $this->twig()->render('shared/form_flow/inline_edit_success.stream.html.twig', [
+            'context' => $this->inlineContext(),
+            'value' => '',
+            'mirrorText' => '',
+        ]);
+
+        self::assertStringContainsString('data-inline-edit-mirror', $html);
+        self::assertStringContainsString('<template></template>', $html);
+    }
+
+    public function testInlineEditSuccessStreamSkipsMirrorsWhenThereIsNoText(): void
+    {
+        $html = $this->twig()->render('shared/form_flow/inline_edit_success.stream.html.twig', [
+            'context' => $this->inlineContext(),
+            'value' => new \DateTimeImmutable('2026-01-01'),
+            'mirrorText' => null,
+        ]);
+
+        self::assertStringNotContainsString('data-inline-edit-mirror', $html);
     }
 }
