@@ -6,6 +6,8 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-07
+
 ### Added
 
 - `InlineEditFlow::handleField()` accepts the current value as a **`Closure`**. The flow calls it for
