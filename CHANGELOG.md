@@ -6,6 +6,8 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-13
+
 ### Added
 
 - `FlowContext::csrf(string $tokenId)`: an opt-in CSRF check for `ActionFlow`. When set, `process()`
