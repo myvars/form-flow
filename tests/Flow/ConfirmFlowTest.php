@@ -41,8 +41,8 @@ final class ConfirmFlowTest extends TestCase
             ->willReturn('<html>confirm</html>');
 
         $flasher = new RecordingFlasher();
-        $actionFlow = new ActionFlow($flasher, $this->createStub(RedirectorInterface::class), $this->createStub(UrlGeneratorInterface::class));
-        $flow = new ConfirmFlow($twig, $flasher, $this->createStub(CsrfTokenManagerInterface::class), $actionFlow);
+        $actionFlow = new ActionFlow($flasher, $this->createStub(RedirectorInterface::class), $this->createStub(UrlGeneratorInterface::class), $this->createStub(CsrfTokenManagerInterface::class));
+        $flow = new ConfirmFlow($twig, $actionFlow);
 
         $response = $flow->confirm($entity, $context);
 
@@ -74,8 +74,8 @@ final class ConfirmFlowTest extends TestCase
             ->willReturn(new Response('', 303));
 
         $flasher = new RecordingFlasher();
-        $actionFlow = new ActionFlow($flasher, $redirector, $urls);
-        $flow = new ConfirmFlow($this->createStub(Environment::class), $flasher, $csrf, $actionFlow);
+        $actionFlow = new ActionFlow($flasher, $redirector, $urls, $csrf);
+        $flow = new ConfirmFlow($this->createStub(Environment::class), $actionFlow);
 
         $response = $flow->execute($request, (object) ['id' => 5], fn (): null => null, $context);
 
@@ -103,8 +103,8 @@ final class ConfirmFlowTest extends TestCase
         $redirector->expects($this->once())->method('to')->willReturn(new Response('', 303));
 
         $flasher = new RecordingFlasher();
-        $actionFlow = new ActionFlow($flasher, $redirector, $urls);
-        $flow = new ConfirmFlow($this->createStub(Environment::class), $flasher, $csrf, $actionFlow);
+        $actionFlow = new ActionFlow($flasher, $redirector, $urls, $csrf);
+        $flow = new ConfirmFlow($this->createStub(Environment::class), $actionFlow);
 
         $response = $flow->execute($request, (object) ['id' => 9], fn (object $cmd): StubResult => StubResult::ok('Deleted'), $context);
 
@@ -135,13 +135,31 @@ final class ConfirmFlowTest extends TestCase
         $redirector->expects($this->once())->method('to')->willReturn(new Response('', 303));
 
         $flasher = new RecordingFlasher();
-        $actionFlow = new ActionFlow($flasher, $redirector, $urls);
-        $flow = new ConfirmFlow($this->createStub(Environment::class), $flasher, $csrf, $actionFlow);
+        $actionFlow = new ActionFlow($flasher, $redirector, $urls, $csrf);
+        $flow = new ConfirmFlow($this->createStub(Environment::class), $actionFlow);
 
         $response = $flow->execute($request, (object) ['id' => 7], fn (object $cmd): StubResult => StubResult::ok('Rewound'), $context);
 
         self::assertSame('rewind', $context->getConfirmKey());
         self::assertSame(303, $response->getStatusCode());
         self::assertSame(['Rewound'], $flasher->successes);
+    }
+
+    public function testExecuteLeavesTheCallersContextUntouched(): void
+    {
+        $request = Request::create('/order-item/5/delete', 'POST');
+        $context = FlowContext::forDelete(FlowModel::simple('order_item'));
+
+        $urls = $this->createStub(UrlGeneratorInterface::class);
+        $urls->method('generate')->willReturn('/gen/app_order_item_index');
+        $redirector = $this->createStub(RedirectorInterface::class);
+        $redirector->method('to')->willReturn(new Response('', 303));
+
+        $actionFlow = new ActionFlow(new RecordingFlasher(), $redirector, $urls, $this->createStub(CsrfTokenManagerInterface::class));
+        $flow = new ConfirmFlow($this->createStub(Environment::class), $actionFlow);
+
+        $flow->execute($request, (object) ['id' => 5], fn (): null => null, $context);
+
+        self::assertNull($context->getCsrfTokenId());
     }
 }

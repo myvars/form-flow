@@ -2,14 +2,11 @@
 
 namespace MyVars\FormFlow;
 
-use MyVars\FormFlow\Contract\FlasherInterface;
 use MyVars\FormFlow\View\FlowContext;
 use MyVars\FormFlow\View\FlowModel;
 use MyVars\FormFlow\View\TemplateContext;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Security\Csrf\CsrfToken;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Twig\Environment;
 
 /**
@@ -24,8 +21,6 @@ final readonly class ConfirmFlow
 {
     public function __construct(
         private Environment $twig,
-        private FlasherInterface $flashes,
-        private CsrfTokenManagerInterface $csrf,
         private ActionFlow $flow,
     ) {
     }
@@ -62,8 +57,8 @@ final readonly class ConfirmFlow
     /**
      * Process the confirmed POST.
      *
-     * Validates the CSRF token (scoped by the context's confirm key + the
-     * command id) then delegates to ActionFlow.
+     * Scopes the CSRF token to the context's confirm key + the command id and
+     * delegates to ActionFlow, which validates it before calling the handler.
      *
      * @param object&object{id: int|string} $command
      */
@@ -73,21 +68,11 @@ final readonly class ConfirmFlow
         callable $handler,
         FlowContext $context,
     ): Response {
-        $submitted = (string) $request->request->get('_token', '');
-        $valid = $this->csrf->isTokenValid(new CsrfToken($context->getConfirmKey() . $command->id, $submitted));
-
-        if (!$valid) {
-            $this->flashes->error($request, 'Invalid CSRF token.');
-
-            // Invalid token => just go back to the success URL
-            return $this->flow->successRedirect($request, $context);
-        }
-
         return $this->flow->process(
             request: $request,
             command: $command,
             handler: $handler,
-            context: $context,
+            context: (clone $context)->csrf($context->getConfirmKey() . $command->id),
         );
     }
 }
