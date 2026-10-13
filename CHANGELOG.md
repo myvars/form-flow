@@ -6,6 +6,19 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+### Added
+
+- `FlowContext::csrf(string $tokenId)`: an opt-in CSRF check for `ActionFlow`. When set, `process()`
+  compares the posted `_token` field with that token id before calling the handler; on a mismatch it
+  flashes "Invalid CSRF token." and redirects to the success route. Without it nothing changes.
+
+### Changed
+
+- `ConfirmFlow::execute()` now delegates its token check to `ActionFlow` (same token id, same
+  behaviour). Constructors changed to match: `ActionFlow` takes a `CsrfTokenManagerInterface`, and
+  `ConfirmFlow` no longer takes one or a `FlasherInterface`. Both are autowired, so this only affects
+  code that constructs them by hand.
+
 ## [1.2.0] - 2026-10-07
 
 ### Added

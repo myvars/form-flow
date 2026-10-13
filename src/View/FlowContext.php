@@ -32,6 +32,8 @@ final class FlowContext
 
     private string $confirmKey = 'delete';
 
+    private ?string $csrfTokenId = null;
+
     /**
      * Factory for action operation (no model, just success route).
      *
@@ -138,6 +140,18 @@ final class FlowContext
         return $this;
     }
 
+    /**
+     * Require a CSRF token before the action runs: ActionFlow checks the posted `_token` field
+     * against this id. Pass the full id, e.g. 'complete' . $task->getId(), and render the form
+     * with csrf_token() of the same id.
+     */
+    public function csrf(string $tokenId): self
+    {
+        $this->csrfTokenId = $tokenId;
+
+        return $this;
+    }
+
     public function allowDelete(bool $allowDelete): self
     {
         $this->allowDelete = $allowDelete;
@@ -192,6 +206,12 @@ final class FlowContext
     public function getConfirmKey(): string
     {
         return $this->confirmKey;
+    }
+
+    /** CSRF token id ActionFlow must see before running the action, or null for no check. */
+    public function getCsrfTokenId(): ?string
+    {
+        return $this->csrfTokenId;
     }
 
     /**

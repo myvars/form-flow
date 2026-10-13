@@ -74,10 +74,26 @@ public function complete(Request $request, Task $task, CompleteTaskHandler $hand
         request: $request,
         command: new CompleteTask($task->getId()),
         handler: $handler,
-        context: FlowContext::forAction('app_demo_task_show', ['id' => (string) $task->getId()]),
+        context: FlowContext::forAction('app_demo_task_show', ['id' => (string) $task->getId()])
+            ->csrf('complete' . $task->getId()),
     );
 }
 ```
+
+An action changes state, so route it as `POST` and add `->csrf($tokenId)`. The flow then checks the
+posted `_token` field against that id before calling the handler; on a mismatch it flashes
+"Invalid CSRF token." and redirects to the success route without running the action. Pass the full
+token id and render the trigger as a form with the same one:
+
+```twig
+<form method="post" action="{{ path('app_demo_task_complete', {id: task.id}) }}">
+    <input type="hidden" name="_token" value="{{ csrf_token('complete' ~ task.id) }}">
+    <button type="submit">Mark complete</button>
+</form>
+```
+
+Without `->csrf()` no token is checked. Use `ConfirmFlow` instead when the action needs a confirmation
+page first.
 
 ---
 
@@ -268,6 +284,7 @@ Create a context with a factory, then refine it fluently.
 |--------|--------|
 | `->template(string $path)` | override the rendered template |
 | `->successRoute(string $route, array $params = [])` | set the post-success redirect target |
+| `->csrf(string $tokenId)` | `ActionFlow` requires a matching `_token` before running the action |
 | `->allowDelete(bool)` | expose a delete affordance to the template |
 
 ---
