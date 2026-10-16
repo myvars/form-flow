@@ -113,6 +113,40 @@ final class ConfirmFlowTest extends TestCase
         self::assertSame([], $flasher->errors);
     }
 
+    public function testExecuteAcceptsAStringableId(): void
+    {
+        $request = Request::create('/order-item/01ARZ3NDEKTSV4RRFFQ69G5FAV/delete', 'POST');
+        $request->request->set('_token', 'good-token');
+
+        $context = FlowContext::forDelete(FlowModel::simple('order_item'));
+
+        $csrf = $this->createMock(CsrfTokenManagerInterface::class);
+        $csrf->expects($this->once())->method('isTokenValid')
+            ->with($this->callback(fn (CsrfToken $t): bool => $t->getId() === 'delete01ARZ3NDEKTSV4RRFFQ69G5FAV'))
+            ->willReturn(true);
+
+        $urls = $this->createStub(UrlGeneratorInterface::class);
+        $urls->method('generate')->willReturn('/gen/app_order_item_index');
+        $redirector = $this->createStub(RedirectorInterface::class);
+        $redirector->method('to')->willReturn(new Response('', 303));
+
+        $flasher = new RecordingFlasher();
+        $actionFlow = new ActionFlow($flasher, $redirector, $urls, $csrf);
+        $flow = new ConfirmFlow($this->createStub(Environment::class), $actionFlow);
+
+        // A typed id value object, as an app with ULID keys passes it
+        $id = new class implements \Stringable {
+            public function __toString(): string
+            {
+                return '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+            }
+        };
+
+        $flow->execute($request, (object) ['id' => $id], fn (object $cmd): StubResult => StubResult::ok('Deleted'), $context);
+
+        self::assertSame(['Deleted'], $flasher->successes);
+    }
+
     public function testForConfirmScopesCsrfTokenToCustomKey(): void
     {
         $request = Request::create('/purchase-order/7/rewind', 'POST');

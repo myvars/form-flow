@@ -60,7 +60,7 @@ final readonly class ConfirmFlow
      * Scopes the CSRF token to the context's confirm key + the command id and
      * delegates to ActionFlow, which validates it before calling the handler.
      *
-     * @param object&object{id: int|string} $command
+     * @param object&object{id: int|string|\Stringable} $command
      */
     public function execute(
         Request $request,
