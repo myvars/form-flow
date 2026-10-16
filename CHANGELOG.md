@@ -6,6 +6,8 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-16
+
 ### Fixed
 
 - `ConfirmFlow::execute()` documents the command id as `int|string|\Stringable`, so an app that passes a
