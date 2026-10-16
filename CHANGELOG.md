@@ -6,6 +6,12 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+### Fixed
+
+- `ConfirmFlow::execute()` documents the command id as `int|string|\Stringable`, so an app that passes a
+  typed id value object (a ULID wrapper, say) from a file with `declare(strict_types=1)` passes PHPStan.
+  Runtime behaviour is unchanged: the id was always only concatenated into the CSRF token id.
+
 ## [1.3.0] - 2026-10-13
 
 ### Added
