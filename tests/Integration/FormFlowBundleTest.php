@@ -21,6 +21,7 @@ use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Twig\Environment;
 
 /**
@@ -30,9 +31,13 @@ use Twig\Environment;
  */
 final class FormFlowBundleTest extends TestCase
 {
-    private function compileContainer(): ContainerBuilder
+    private function compileContainer(bool $withValidator = false): ContainerBuilder
     {
         $container = new ContainerBuilder();
+
+        if ($withValidator) {
+            $container->register(ValidatorInterface::class)->setSynthetic(true)->setPublic(true);
+        }
 
         // External services each flow autowires (the host app/framework provides these).
         foreach ([
@@ -68,6 +73,9 @@ final class FormFlowBundleTest extends TestCase
         $container->set(Environment::class, $this->createStub(Environment::class));
         $container->set(UrlGeneratorInterface::class, $this->createStub(UrlGeneratorInterface::class));
         $container->set(CsrfTokenManagerInterface::class, $this->createStub(CsrfTokenManagerInterface::class));
+        if ($withValidator) {
+            $container->set(ValidatorInterface::class, $this->createStub(ValidatorInterface::class));
+        }
 
         return $container;
     }
@@ -91,6 +99,28 @@ final class FormFlowBundleTest extends TestCase
     public function testFlowServiceIsRegisteredAndAutowired(string $flowClass): void
     {
         self::assertInstanceOf($flowClass, $this->compileContainer()->get($flowClass));
+    }
+
+    public function testInlineEditFlowGetsTheValidatorWhenTheAppHasOne(): void
+    {
+        $container = $this->compileContainer(withValidator: true);
+
+        self::assertSame(
+            $container->get(ValidatorInterface::class),
+            $this->validatorOf($container->get(InlineEditFlow::class)),
+        );
+    }
+
+    public function testInlineEditFlowWorksWithoutAValidator(): void
+    {
+        self::assertNull($this->validatorOf($this->compileContainer()->get(InlineEditFlow::class)));
+    }
+
+    private function validatorOf(?object $flow): mixed
+    {
+        self::assertInstanceOf(InlineEditFlow::class, $flow);
+
+        return new \ReflectionProperty(InlineEditFlow::class, 'validator')->getValue($flow);
     }
 
     public function testRedirectorPortResolvesToTurboAwareRedirector(): void

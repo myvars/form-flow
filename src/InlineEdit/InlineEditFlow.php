@@ -81,6 +81,8 @@ final readonly class InlineEditFlow
         InlineEditContext $context,
         array $formOptions = [],
     ): Response {
+        $this->assertCanCheckEntityRules($context);
+
         // GET without ?edit - return display mode
         if ($request->isMethod('GET') && !$request->query->has('edit')) {
             return $this->renderDisplay($context);
@@ -119,6 +121,25 @@ final readonly class InlineEditFlow
     }
 
     /**
+     * Fail fast on a context that names a property the flow cannot check: no validator, or a
+     * property the entity does not have (the validator would silently find no rules for it).
+     */
+    private function assertCanCheckEntityRules(InlineEditContext $context): void
+    {
+        if ($context->property === null) {
+            return;
+        }
+
+        if ($this->validator === null) {
+            throw new \LogicException(sprintf('InlineEditContext "%s" names a property to validate, but no validator is available. Run "composer require symfony/validator" and keep framework.validation enabled.', $context->frameId));
+        }
+
+        if (!property_exists($context->entity, $context->property)) {
+            throw new \LogicException(sprintf('InlineEditContext "%s" names property "%s", which %s does not have.', $context->frameId, $context->property, $context->entity::class));
+        }
+    }
+
+    /**
      * Check the submitted value against the rules of the entity property it is saved to, if the
      * context names one. Each violation is added to the field, so it shows next to the input.
      *
@@ -126,12 +147,8 @@ final readonly class InlineEditFlow
      */
     private function satisfiesEntityRules(FormInterface $form, InlineEditContext $context): bool
     {
-        if ($context->property === null) {
+        if ($context->property === null || $this->validator === null) {
             return true;
-        }
-
-        if ($this->validator === null) {
-            throw new \LogicException(sprintf('InlineEditContext "%s" names a property to validate, but no validator is available. Run "composer require symfony/validator".', $context->frameId));
         }
 
         /** @var InlineFieldForm $formData */

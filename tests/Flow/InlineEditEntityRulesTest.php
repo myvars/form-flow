@@ -16,6 +16,7 @@ use Symfony\Component\Form\Forms;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Validator\Constraints\Regex;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Twig\Environment;
@@ -103,7 +104,7 @@ final class InlineEditEntityRulesTest extends TestCase
         $entity = new ValidatedEntity();
         $savedValue = null;
 
-        $this->flow($this->validator)->handleField(
+        $response = $this->flow($this->validator)->handleField(
             $this->post('toolong'),
             $entity->name,
             function (mixed $value) use (&$savedValue): bool {
@@ -114,10 +115,11 @@ final class InlineEditEntityRulesTest extends TestCase
             $this->context($entity, null),
         );
 
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertSame('toolong', $savedValue);
     }
 
-    public function testAPropertyWithoutAValidatorIsAClearError(): void
+    public function testAPropertyWithoutAValidatorIsAClearErrorEvenOnDisplay(): void
     {
         $entity = new ValidatedEntity();
 
@@ -125,11 +127,42 @@ final class InlineEditEntityRulesTest extends TestCase
         $this->expectExceptionMessage('composer require symfony/validator');
 
         $this->flow(null)->handleField(
-            $this->post('new'),
+            Request::create('/validated/1/inline/name', 'GET'),
             $entity->name,
             fn (): bool => true,
             $this->context($entity, 'name'),
         );
+    }
+
+    public function testAMistypedPropertyIsAClearError(): void
+    {
+        $entity = new ValidatedEntity();
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('names property "nmae"');
+
+        $this->flow($this->validator)->handleField(
+            $this->post('toolong'),
+            $entity->name,
+            fn (): bool => self::fail('onSave must not run'),
+            $this->context($entity, 'nmae'),
+        );
+    }
+
+    public function testAFailingFormConstraintIsReportedBeforeTheEntityRules(): void
+    {
+        $entity = new ValidatedEntity();
+
+        $response = $this->flow($this->validator)->handleField(
+            $this->post('toolong'),
+            $entity->name,
+            fn (): bool => self::fail('onSave must not run'),
+            $this->context($entity, 'name'),
+            ['constraints' => [new Regex(pattern: '/^[0-9]+$/', message: 'Digits only')]],
+        );
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertSame(['Digits only'], $this->fieldErrors());
     }
 
     private function flow(?ValidatorInterface $validator): InlineEditFlow
@@ -166,6 +199,8 @@ final class InlineEditEntityRulesTest extends TestCase
     {
         $form = $this->rendered['form'] ?? null;
         self::assertInstanceOf(FormView::class, $form);
+
+        self::assertCount(0, $form->vars['errors'], 'Errors belong on the field, not the form');
 
         $messages = [];
         foreach ($form->children['value']->vars['errors'] as $error) {
