@@ -233,8 +233,15 @@ checks the submitted value against that property's own rules (`#[Assert\NotBlank
 Each violation shows on the field, the form comes back with a 422, and `onSave` is not called. The
 entity stays the one place the rules are declared, so don't copy them into `formOptions`.
 
-This needs `symfony/validator`. Setting `property` without it throws a `LogicException`. For a rule
-that does not belong on the entity, `formOptions['constraints']` still works and is checked first.
+This needs `symfony/validator`. Setting `property` without a validator, or naming a property the
+entity does not have, throws a `LogicException` on the first request. For a rule that does not belong
+on the entity, `formOptions['constraints']` still works and is checked first.
+
+Limits:
+- Only the `Default` group is checked; rules in other groups are skipped.
+- Only the property's own rules are checked, not class-level ones (`UniqueEntity`, a class `Callback`).
+- The value is checked as the form submits it (a string for the default text field), before `onSave`
+  converts it. Use `property` for fields whose submitted value already has the property's type.
 
 ### Keeping other copies of the value in step
 
