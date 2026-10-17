@@ -8,6 +8,7 @@ use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Twig\Environment;
 
 /**
@@ -33,9 +34,11 @@ use Twig\Environment;
  *
  *           return $flusher->flush();
  *       },
- *       context: InlineEditContext::create(...),
- *       formOptions: ['constraints' => [new NotBlank()]],
+ *       context: InlineEditContext::create(..., entity: $manufacturer, property: 'name'),
  *   );
+ *
+ * With `property` set, the value is checked against that entity property's validation rules
+ * before onSave runs, so the entity stays the one place the rules are declared.
  */
 final readonly class InlineEditFlow
 {
@@ -49,6 +52,7 @@ final readonly class InlineEditFlow
         private FormFactoryInterface $forms,
         private FlasherInterface $flashes,
         private Environment $twig,
+        private ?ValidatorInterface $validator = null,
     ) {
     }
 
@@ -77,6 +81,8 @@ final readonly class InlineEditFlow
         InlineEditContext $context,
         array $formOptions = [],
     ): Response {
+        $this->assertCanCheckEntityRules($context);
+
         // GET without ?edit - return display mode
         if ($request->isMethod('GET') && !$request->query->has('edit')) {
             return $this->renderDisplay($context);
@@ -99,7 +105,7 @@ final readonly class InlineEditFlow
         $form = $this->forms->create(InlineFieldType::class, new InlineFieldForm($current), $formOptions);
         $form->handleRequest($request);
 
-        if ($form->isSubmitted() && $form->isValid()) {
+        if ($form->isSubmitted() && $form->isValid() && $this->satisfiesEntityRules($form, $context)) {
             try {
                 /** @var InlineFieldForm $formData */
                 $formData = $form->getData();
@@ -112,6 +118,48 @@ final readonly class InlineEditFlow
         }
 
         return $this->renderForm($form, $context, $cancelUrl);
+    }
+
+    /**
+     * Fail fast on a context that names a property the flow cannot check: no validator, or a
+     * property the entity does not have (the validator would silently find no rules for it).
+     */
+    private function assertCanCheckEntityRules(InlineEditContext $context): void
+    {
+        if ($context->property === null) {
+            return;
+        }
+
+        if ($this->validator === null) {
+            throw new \LogicException(sprintf('InlineEditContext "%s" names a property to validate, but no validator is available. Run "composer require symfony/validator" and keep framework.validation enabled.', $context->frameId));
+        }
+
+        if (!property_exists($context->entity, $context->property)) {
+            throw new \LogicException(sprintf('InlineEditContext "%s" names property "%s", which %s does not have.', $context->frameId, $context->property, $context->entity::class));
+        }
+    }
+
+    /**
+     * Check the submitted value against the rules of the entity property it is saved to, if the
+     * context names one. Each violation is added to the field, so it shows next to the input.
+     *
+     * @param FormInterface<mixed> $form
+     */
+    private function satisfiesEntityRules(FormInterface $form, InlineEditContext $context): bool
+    {
+        if ($context->property === null || $this->validator === null) {
+            return true;
+        }
+
+        /** @var InlineFieldForm $formData */
+        $formData = $form->getData();
+        $violations = $this->validator->validatePropertyValue($context->entity, $context->property, $formData->value);
+
+        foreach ($violations as $violation) {
+            $form->get('value')->addError(new FormError((string) $violation->getMessage()));
+        }
+
+        return count($violations) === 0;
     }
 
     /**

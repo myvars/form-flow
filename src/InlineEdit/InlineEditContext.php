@@ -18,6 +18,7 @@ final readonly class InlineEditContext
      * @param string               $entityVarName       Variable name for entity in template (e.g., "manufacturer")
      * @param array<string, mixed> $displayTemplateVars Additional variables for the display template
      * @param string|null          $successMessage      Flash message on success (null for no message)
+     * @param string|null          $property            Entity property the value is saved to; its validation rules are checked before onSave
      */
     private function __construct(
         public string $frameId,
@@ -27,6 +28,7 @@ final readonly class InlineEditContext
         public string $entityVarName,
         public array $displayTemplateVars = [],
         public ?string $successMessage = 'Updated successfully',
+        public ?string $property = null,
     ) {
     }
 
@@ -40,6 +42,9 @@ final readonly class InlineEditContext
      * @param string|null          $entityVarName       Variable name for entity in template (auto-derived if null)
      * @param array<string, mixed> $displayTemplateVars Additional template variables
      * @param string|null          $successMessage      Flash message (null to disable)
+     * @param string|null          $property            Entity property the value is saved to, e.g. "name". When set, the
+     *                                                  value is checked against that property's validation rules before
+     *                                                  onSave runs (needs symfony/validator)
      */
     public static function create(
         string $frameId,
@@ -49,6 +54,7 @@ final readonly class InlineEditContext
         ?string $entityVarName = null,
         array $displayTemplateVars = [],
         ?string $successMessage = 'Updated successfully',
+        ?string $property = null,
     ): self {
         return new self(
             frameId: $frameId,
@@ -58,6 +64,7 @@ final readonly class InlineEditContext
             entityVarName: $entityVarName ?? self::deriveEntityVarName($entity),
             displayTemplateVars: $displayTemplateVars,
             successMessage: $successMessage,
+            property: $property,
         );
     }
 
