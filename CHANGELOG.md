@@ -6,6 +6,15 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+### Added
+
+- `InlineEditContext::create(property: …)`: the entity property an inline edit saves to. When set,
+  `InlineEditFlow` checks the submitted value against that property's validation rules before `onSave`,
+  shows each violation on the field and re-renders with a 422 without calling `onSave`. Needs
+  `symfony/validator` (now suggested); setting `property` without it throws a `LogicException`. Without
+  `property` nothing changes.
+- `InlineEditFlow` takes an optional `ValidatorInterface`, autowired when the validator is installed.
+
 ## [1.3.1] - 2026-10-16
 
 ### Fixed
