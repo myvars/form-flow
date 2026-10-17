@@ -29,7 +29,11 @@
         "friendsofphp/php-cs-fixer": "^3.95",
         "phpstan/phpstan": "^2.2",
         "phpstan/phpstan-symfony": "^2.0",
-        "phpunit/phpunit": "^13.1"
+        "phpunit/phpunit": "^13.1",
+        "symfony/validator": "^8.1"
+    },
+    "suggest": {
+        "symfony/validator": "Checks an inline edit against the entity property's rules (InlineEditContext property)"
     },
     "autoload": {
         "psr-4": {
