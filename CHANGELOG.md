@@ -6,6 +6,8 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-17
+
 ### Added
 
 - `InlineEditContext::create(property: …)`: the entity property an inline edit saves to. When set,
