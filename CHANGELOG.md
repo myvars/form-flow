@@ -6,6 +6,8 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-26
+
 ### Changed
 
 - `InlineEditFlow`'s default success template, `shared/form_flow/inline_edit_success.stream.html.twig`,
