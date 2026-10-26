@@ -94,17 +94,6 @@ final class DefaultTemplatesTest extends TestCase
     {
         $html = $this->twig()->render('shared/form_flow/inline_edit_success.stream.html.twig', ['context' => $this->inlineContext()]);
 
-        self::assertSame('<turbo-stream action="refresh"></turbo-stream>', trim($html));
-    }
-
-    public function testInlineEditSuccessStreamIgnoresTheDeprecatedMirrorText(): void
-    {
-        $html = $this->twig()->render('shared/form_flow/inline_edit_success.stream.html.twig', [
-            'context' => $this->inlineContext(),
-            'value' => 'Widget',
-            'mirrorText' => 'Widget',
-        ]);
-
-        self::assertSame('<turbo-stream action="refresh"></turbo-stream>', trim($html));
+        self::assertSame('<turbo-stream action="refresh" scroll="preserve"></turbo-stream>', trim($html));
     }
 }

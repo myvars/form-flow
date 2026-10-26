@@ -250,12 +250,16 @@ A successful save answers with `<turbo-stream action="refresh">`, as the other f
 (`TurboAwareRedirector`). Turbo requests the page again, so the field comes back in display mode and
 every other copy of the value — a breadcrumb, a page heading, the `<title>` — is rendered from what
 was stored, with nothing to mark up. The flash set on save shows on the refreshed page, wherever your
-layout renders flashes. The refresh uses the page's own `turbo-refresh-method` and
-`turbo-refresh-scroll` meta tags (Turbo's
+layout renders flashes. The stream keeps the scroll position (`scroll="preserve"`); whether the page
+is replaced or morphed follows its own `turbo-refresh-method` meta tag, `replace` by default (Turbo's
 [page refreshes](https://turbo.hotwired.dev/handbook/page_refreshes)).
 
 - Each save costs one more request: the page itself.
 - Anything typed into another open inline edit on the same page is lost, as with any refresh.
+- The refresh reloads the browser's current URL, not the field's page. An inline edit shown inside
+  another frame (a modal, a lazily loaded panel) is lost with that frame's content, and one whose value
+  is part of the page's URL (a slug) refreshes an address that no longer exists. Override the success
+  template for those.
 - To keep the old behaviour (replace only the field's frame), override the success template — see
   [templates](templates.md#inline-edit-templates).
 

@@ -123,7 +123,7 @@ as `context.entity` (or under your `entityVarName`).
 
 ```twig
 {# shared/form_flow/inline_edit_success.stream.html.twig #}
-<turbo-stream action="refresh"></turbo-stream>
+<turbo-stream action="refresh" scroll="preserve"></turbo-stream>
 ```
 
 The default refreshes the page, so every copy of the saved value on it is rendered again (see
@@ -138,7 +138,8 @@ overrides it:
 </turbo-stream>
 ```
 
-`value` and `mirrorText` are deprecated: they are set only when the controller passes the value as a
+That override does not keep the deprecated mirror stream; an app still passing Closures that wants it
+copies the stream from the 1.4 template. `value` and `mirrorText` are deprecated: they are set only when the controller passes the value as a
 Closure, and are removed in 2.0.
 
 That is the whole contract. Style the templates to match your application.
