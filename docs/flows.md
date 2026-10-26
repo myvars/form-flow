@@ -178,12 +178,13 @@ public function index(
 ## InlineEditFlow — inline field editing
 
 A single endpoint serving three modes over Turbo Frames: display (`GET`), edit form (`GET ?edit`), and
-save (`POST` → Turbo Stream). The **callback owns persistence** and reports whether anything changed.
+save (`POST` → a Turbo Stream that refreshes the page). The **callback owns persistence** and reports
+whether anything changed.
 
 ```php
 public function handleField(
     Request $request,
-    mixed $value,                          // current field value, or a Closure returning it (see below)
+    mixed $value,                          // current field value (a Closure returning it is deprecated, see below)
     callable $onSave,                      // fn(mixed $value): bool  — apply + persist; return "changed?"
     InlineEditContext $context,
     array $formOptions = [],               // InlineFieldType options (constraints, field_type, …)
@@ -243,40 +244,30 @@ Limits:
 - The value is checked as the form submits it (a string for the default text field), before `onSave`
   converts it. Use `property` for fields whose submitted value already has the property's type.
 
-### Keeping other copies of the value in step
+### After a save
 
-A successful save replaces only the field's own Turbo Frame. If the same value also appears elsewhere
-on the page — a breadcrumb, a page heading — that copy would stay stale until a reload. To update it
-in the same response:
+A successful save answers with `<turbo-stream action="refresh">`, as the other flows do after a save
+(`TurboAwareRedirector`). Turbo requests the page again, so the field comes back in display mode and
+every other copy of the value — a breadcrumb, a page heading, the `<title>` — is rendered from what
+was stored, with nothing to mark up. The flash set on save shows on the refreshed page, wherever your
+layout renders flashes. The refresh uses the page's own `turbo-refresh-method` and
+`turbo-refresh-scroll` meta tags (Turbo's
+[page refreshes](https://turbo.hotwired.dev/handbook/page_refreshes)).
 
-1. Pass the current value as a **Closure** rather than a plain value. The flow calls it for the form's
-   starting value and again after `onSave`, so it knows what was actually stored:
+- Each save costs one more request: the page itself.
+- Anything typed into another open inline edit on the same page is lost, as with any refresh.
+- To keep the old behaviour (replace only the field's frame), override the success template — see
+  [templates](templates.md#inline-edit-templates).
 
-   ```php
-   return $flow->handleField(
-       request: $request,
-       value: fn () => $task->getTitle(),
-       onSave: function (mixed $value) use ($task, $flusher): bool { /* … */ },
-       context: InlineEditContext::create(frameId: 'inline-edit-task-' . $task->getId() . '-title', /* … */),
-   );
-   ```
+#### Deprecated: mirroring the value with a Closure
 
-2. Mark each element that should follow the field with the inline edit's frame id:
-
-   ```twig
-   <h1 data-inline-edit-mirror="inline-edit-task-{{ task.id }}-title">{{ task.title }}</h1>
-   ```
-
-The success stream then updates every marked element with the stored value, escaped as text.
-
-- The value is **read back**, not taken from the submission, so if `onSave` trims or otherwise
-  normalises the input the mirrors show what was stored.
-- Only text-like values are mirrored (`string`, `int`, `float`, `Stringable`). A date, enum or related
-  entity needs formatting your application owns; override the success template and use its `value`
-  variable for those.
-- Only a `Closure` is treated as a reader. A plain string is always used as the value, even if it
-  happens to name a function.
-- With a plain value, nothing extra is sent and behaviour is unchanged.
+Before 1.5 the success stream replaced only the field's frame, and copies elsewhere on the page were
+kept in step by passing `value:` as a Closure and marking them `data-inline-edit-mirror="<frameId>"`.
+The refresh makes that unnecessary. A Closure still works through 1.x and triggers a deprecation: the
+flow calls it for the form's starting value and again after `onSave`, and passes the result to the
+success template as `value` and `mirrorText` (that value as text, for `string`, `int`, `float` and
+`Stringable`; otherwise `null`). The default template no longer uses them; an overriding template can.
+Pass the value itself instead (`value: $task->getTitle()`). Both are removed in 2.0.
 
 ---
 
