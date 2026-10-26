@@ -1,24 +1,13 @@
 {#
-    Inline-edit success (design-neutral). Replaces the frame with the refreshed display.
-    The default does not emit a flash stream (no app-template dependency); override to
-    append your own flash markup.
+    Inline-edit success (design-neutral). Refreshes the page, as the other flows do after a
+    save (TurboAwareRedirector): the server renders it again, so the field shows its display mode
+    and every other copy of the value (a breadcrumb, a heading) is current. The flash set on save
+    shows on the refreshed page, wherever the app's layout renders flashes. Scroll is kept, as
+    an inline edit is often mid-page; the method (replace or morph) is the page's own.
 
     Variables:
     - context    (InlineEditContext)
-    - value      the stored value read back after saving, when the controller passed a Closure; else null
-    - mirrorText that value as text, or null when there is nothing to mirror
+    - value      deprecated: the stored value read back after saving, when the controller passed a Closure; else null
+    - mirrorText deprecated: that value as text, or null when there is nothing to mirror
 #}
-<turbo-stream action="replace" target="{{ context.frameId }}">
-    <template>
-        {{ include(context.displayTemplate, context.displayTemplateVars|merge({
-            (context.entityVarName): context.entity
-        })) }}
-    </template>
-</turbo-stream>
-{# The frame only covers the field itself. Elements elsewhere on the page that show the same
-   value opt in with data-inline-edit-mirror="<frameId>" and are updated here. #}
-{% if mirrorText is defined and mirrorText is not null %}
-<turbo-stream action="update" targets="[data-inline-edit-mirror='{{ context.frameId }}']">
-    <template>{{ mirrorText }}</template>
-</turbo-stream>
-{% endif %}
+<turbo-stream action="refresh" scroll="preserve"></turbo-stream>

@@ -6,6 +6,23 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+### Changed
+
+- `InlineEditFlow`'s default success template, `shared/form_flow/inline_edit_success.stream.html.twig`,
+  is now `<turbo-stream action="refresh" scroll="preserve">`, as the other flows answer after a save. The page is rendered
+  again, so a breadcrumb or heading showing the edited value is current, and the flash set on save shows
+  on the refreshed page. It used to replace only the field's frame (and update `data-inline-edit-mirror`
+  elements). Apps that override the template are unaffected. Costs: one more page request per save,
+  and the refresh reloads the browser's current URL, so an inline edit inside a modal or another frame,
+  or one that changes the URL (a slug), needs the replace-only override in `docs/templates.md`.
+- `symfony/deprecation-contracts` is now required (it was already installed with every Symfony component).
+
+### Deprecated
+
+- Passing `InlineEditFlow::handleField()`'s `$value` as a Closure, and the success template's `value` and
+  `mirrorText` variables (the mirror stream). They still work and are removed in 2.0; pass the value
+  itself.
+
 ## [1.4.0] - 2026-10-17
 
 ### Added
