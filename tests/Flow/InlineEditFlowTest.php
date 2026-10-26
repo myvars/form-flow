@@ -10,6 +10,7 @@ use MyVars\FormFlow\InlineEdit\InlineFieldForm;
 use MyVars\FormFlow\Tests\Double\RecordingFlasher;
 use MyVars\FormFlow\Tests\Fixtures\SampleEntity;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
@@ -20,6 +21,8 @@ use Twig\Environment;
 
 final class InlineEditFlowTest extends TestCase
 {
+    private const string CLOSURE_DEPRECATION = 'Since myvars/form-flow 1.5: Passing the value of inline edit "inline-edit-sample-1-name" as a Closure is deprecated: the success template refreshes the page, so pass the value itself.';
+
     private function context(): InlineEditContext
     {
         return InlineEditContext::create(
@@ -161,8 +164,11 @@ final class InlineEditFlowTest extends TestCase
         self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
     }
 
+    #[IgnoreDeprecations]
     public function testClosureValueIsReadForTheFormAndAgainAfterSaving(): void
     {
+        $this->expectUserDeprecationMessage(self::CLOSURE_DEPRECATION);
+
         $request = Request::create('/sample/1/inline/name', 'POST');
         $stored = 'Old Name';
 
@@ -252,8 +258,11 @@ final class InlineEditFlowTest extends TestCase
     }
 
     #[DataProvider('savedValueProvider')]
+    #[IgnoreDeprecations]
     public function testOnlyTextLikeSavedValuesBecomeMirrorText(mixed $saved, ?string $expected): void
     {
+        $this->expectUserDeprecationMessage(self::CLOSURE_DEPRECATION);
+
         $request = Request::create('/sample/1/inline/name', 'POST');
 
         $forms = $this->createStub(FormFactoryInterface::class);
@@ -276,8 +285,11 @@ final class InlineEditFlowTest extends TestCase
         self::assertSame(2, $calls);
     }
 
+    #[IgnoreDeprecations]
     public function testInvalidPostDoesNotReadTheValueBack(): void
     {
+        $this->expectUserDeprecationMessage(self::CLOSURE_DEPRECATION);
+
         $request = Request::create('/sample/1/inline/name', 'POST');
 
         $forms = $this->createStub(FormFactoryInterface::class);

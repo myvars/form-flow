@@ -15,6 +15,7 @@
         "pagerfanta/core": "^4",
         "symfony/config": "^8.1",
         "symfony/dependency-injection": "^8.1",
+        "symfony/deprecation-contracts": "^3",
         "symfony/form": "^8.1",
         "symfony/http-foundation": "^8.1",
         "symfony/http-kernel": "^8.1",

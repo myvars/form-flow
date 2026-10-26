@@ -17,13 +17,10 @@ use Twig\Environment;
  * Single endpoint handles three modes:
  * - GET (no ?edit): Returns display template inside turbo-frame
  * - GET ?edit=1: Returns form inside turbo-frame
- * - POST: Processes form, returns Turbo Stream to replace frame
+ * - POST: Processes form, returns a Turbo Stream that refreshes the page
  *
  * The onSave callback owns persistence (apply the value and flush) and returns
  * whether anything changed, so the flow stays out of the database.
- *
- * Pass the current value as a Closure to have the flow read it again after saving
- * and send it to elements outside the frame that mirror the field (see handleField()).
  *
  * Usage:
  *   return $flow->handleField(
@@ -63,14 +60,14 @@ final readonly class InlineEditFlow
      * owns persistence (apply the value and flush); return whether anything actually
      * changed to control the success flash (null/void is treated as changed).
      *
-     * The success response only replaces the field's own Turbo Frame. To keep other copies of
-     * the value on the page in step (a breadcrumb, a heading), pass $value as a Closure: the flow
-     * calls it for the form's starting value and again after onSave, and gives the stored result
-     * to the success template, which updates every element marked
-     * data-inline-edit-mirror="<frameId>". It is read back rather than taken from the submission
-     * so the mirrors show what was stored, not what was typed. Only text-like values are mirrored.
+     * The default success template refreshes the page, so every copy of the value on it (a
+     * breadcrumb, a heading) is rendered again from what was stored.
      *
-     * @param mixed|\Closure(): mixed      $value       Current field value, or a Closure returning it
+     * Passing $value as a Closure is deprecated since 1.5: it fed the mirror stream, which the
+     * refresh replaces. It still works: the flow calls it for the form's starting value and again
+     * after onSave, and gives the result to the success template as `value` and `mirrorText`.
+     *
+     * @param mixed|\Closure(): mixed      $value       Current field value (a Closure returning it is deprecated)
      * @param callable(mixed): (bool|null) $onSave      Apply the new value and persist; return whether it changed
      * @param array<string, mixed>         $formOptions Options for InlineFieldType (constraints, field_type, etc.)
      */
@@ -100,6 +97,9 @@ final readonly class InlineEditFlow
 
         // Only a Closure is treated as a reader: a plain string value may happen to name a function.
         $read = $value instanceof \Closure ? $value : null;
+        if ($read !== null) {
+            trigger_deprecation('myvars/form-flow', '1.5', 'Passing the value of inline edit "%s" as a Closure is deprecated: the success template refreshes the page, so pass the value itself.', $context->frameId);
+        }
         $current = $read !== null ? $read() : $value;
 
         $form = $this->forms->create(InlineFieldType::class, new InlineFieldForm($current), $formOptions);
@@ -199,7 +199,7 @@ final readonly class InlineEditFlow
     }
 
     /**
-     * Render success Turbo Stream that replaces the frame with display.
+     * Render the success Turbo Stream (by default, a refresh of the page).
      *
      * @param mixed $savedValue The value read back after saving, or null when the caller gave no reader
      */
@@ -226,7 +226,7 @@ final readonly class InlineEditFlow
     }
 
     /**
-     * The saved value as text for mirror elements, or null when it has no plain-text form
+     * The saved value as text for the deprecated mirror stream, or null when it has no plain-text form
      * (dates, enums, objects and arrays need formatting the application owns).
      */
     private static function mirrorText(mixed $savedValue): ?string
