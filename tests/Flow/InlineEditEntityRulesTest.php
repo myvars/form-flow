@@ -33,9 +33,12 @@ final class InlineEditEntityRulesTest extends TestCase
 
     private RecordingTwig $twig;
 
+    private RecordingFlasher $flasher;
+
     protected function setUp(): void
     {
         $this->twig = new RecordingTwig();
+        $this->flasher = new RecordingFlasher();
         $this->validator = Validation::createValidatorBuilder()->enableAttributeMapping()->getValidator();
         $this->forms = Forms::createFormFactoryBuilder()
             ->addExtension(new HttpFoundationExtension())
@@ -159,9 +162,25 @@ final class InlineEditEntityRulesTest extends TestCase
         self::assertSame(['Digits only'], $this->fieldErrors());
     }
 
+    public function testAnExceptionFromOnSaveIsAFormErrorAndNotASuccess(): void
+    {
+        $entity = new ValidatedEntity();
+
+        $response = $this->flow($this->validator)->handleField(
+            $this->post('new'),
+            $entity->name,
+            fn (): bool => throw new \RuntimeException('Name is already taken'),
+            $this->context($entity, 'name'),
+        );
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertSame(['Name is already taken'], $this->formErrors());
+        self::assertSame([], $this->flasher->successes);
+    }
+
     private function flow(?ValidatorInterface $validator): InlineEditFlow
     {
-        return new InlineEditFlow($this->forms, new RecordingFlasher(), $this->twig, $validator);
+        return new InlineEditFlow($this->forms, $this->flasher, $this->twig, $validator);
     }
 
     private function context(object $entity, ?string $property): InlineEditContext
@@ -177,6 +196,22 @@ final class InlineEditEntityRulesTest extends TestCase
     private function post(string $value): Request
     {
         return Request::create('/validated/1/inline/name', 'POST', ['inline_field' => ['value' => $value]]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function formErrors(): array
+    {
+        $form = $this->twig->vars['form'] ?? null;
+        self::assertInstanceOf(FormView::class, $form);
+
+        $messages = [];
+        foreach ($form->vars['errors'] as $error) {
+            $messages[] = $error->getMessage();
+        }
+
+        return $messages;
     }
 
     /**
