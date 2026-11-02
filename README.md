@@ -78,10 +78,12 @@ Then provide the port adapters and templates — see **[docs/installation.md](do
 ## Quality
 
 ```bash
-composer test       # PHPUnit — unit, flow and bundle-integration suites
+composer test        # PHPUnit — unit, flow and bundle-integration suites
 composer phpstan     # PHPStan level 7
 composer cs          # php-cs-fixer (dry-run)
 ```
+
+How tests are written: [CONTRIBUTING.md › Testing](CONTRIBUTING.md#testing).
 
 ## License
 
