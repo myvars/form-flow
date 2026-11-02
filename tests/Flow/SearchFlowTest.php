@@ -7,6 +7,7 @@ namespace MyVars\FormFlow\Tests\Flow;
 use MyVars\FormFlow\Redirect\RedirectorInterface;
 use MyVars\FormFlow\SearchFlow;
 use MyVars\FormFlow\Tests\Double\RecordingFlasher;
+use MyVars\FormFlow\Tests\Double\RecordingTwig;
 use MyVars\FormFlow\Tests\Double\StubSearchCriteria;
 use MyVars\FormFlow\View\FlowContext;
 use MyVars\FormFlow\View\FlowModel;
@@ -27,18 +28,7 @@ final class SearchFlowTest extends TestCase
         $adapter = new ArrayAdapter(['A', 'B', 'C', 'D', 'E']);
         $criteria = new StubSearchCriteria(page: 1, limit: 2);
 
-        $twig = $this->createMock(Environment::class);
-        $twig->expects($this->once())->method('render')
-            ->with(
-                'shared/form_flow/base.html.twig',
-                $this->callback(fn (array $vars): bool => $vars['flowModel'] === 'Order Item'
-                    && $vars['flowOperation'] === 'index'
-                    && $vars['template'] === 'order_item/index.html.twig'
-                    && $vars['routes'] instanceof FlowRoutes
-                    && $vars['routes']->index === 'app_order_item_index'
-                    && $vars['results'] instanceof Pagerfanta)
-            )->willReturn('<html>OK</html>');
-
+        $twig = new RecordingTwig('<html>OK</html>');
         $flasher = new RecordingFlasher();
         $flow = new SearchFlow($twig, $flasher, $this->createStub(RedirectorInterface::class), $this->createStub(UrlGeneratorInterface::class));
 
@@ -47,6 +37,13 @@ final class SearchFlowTest extends TestCase
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertSame('<html>OK</html>', $response->getContent());
         self::assertSame([], $flasher->warnings);
+        self::assertSame('shared/form_flow/base.html.twig', $twig->template);
+        self::assertSame('Order Item', $twig->vars['flowModel']);
+        self::assertSame('index', $twig->vars['flowOperation']);
+        self::assertSame('order_item/index.html.twig', $twig->vars['template']);
+        self::assertInstanceOf(FlowRoutes::class, $twig->vars['routes']);
+        self::assertSame('app_order_item_index', $twig->vars['routes']->index);
+        self::assertInstanceOf(Pagerfanta::class, $twig->vars['results']);
     }
 
     public function testSearchOutOfRangeRedirectsWithWarningFlash(): void

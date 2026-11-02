@@ -7,6 +7,7 @@ namespace MyVars\FormFlow\Tests\Flow;
 use MyVars\FormFlow\InlineEdit\InlineEditContext;
 use MyVars\FormFlow\InlineEdit\InlineEditFlow;
 use MyVars\FormFlow\Tests\Double\RecordingFlasher;
+use MyVars\FormFlow\Tests\Double\RecordingTwig;
 use MyVars\FormFlow\Tests\Fixtures\ValidatedEntity;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Form\Extension\HttpFoundation\HttpFoundationExtension;
@@ -19,7 +20,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Validator\Constraints\Regex;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Twig\Environment;
 
 /**
  * Runs the flow with a real form factory and validator, so the entity property's own
@@ -27,15 +27,15 @@ use Twig\Environment;
  */
 final class InlineEditEntityRulesTest extends TestCase
 {
-    /** @var array<string, mixed> */
-    private array $rendered = [];
-
     private ValidatorInterface $validator;
 
     private FormFactoryInterface $forms;
 
+    private RecordingTwig $twig;
+
     protected function setUp(): void
     {
+        $this->twig = new RecordingTwig();
         $this->validator = Validation::createValidatorBuilder()->enableAttributeMapping()->getValidator();
         $this->forms = Forms::createFormFactoryBuilder()
             ->addExtension(new HttpFoundationExtension())
@@ -161,14 +161,7 @@ final class InlineEditEntityRulesTest extends TestCase
 
     private function flow(?ValidatorInterface $validator): InlineEditFlow
     {
-        $twig = $this->createStub(Environment::class);
-        $twig->method('render')->willReturnCallback(function (string $template, array $params): string {
-            $this->rendered = $params;
-
-            return '<html></html>';
-        });
-
-        return new InlineEditFlow($this->forms, new RecordingFlasher(), $twig, $validator);
+        return new InlineEditFlow($this->forms, new RecordingFlasher(), $this->twig, $validator);
     }
 
     private function context(object $entity, ?string $property): InlineEditContext
@@ -191,7 +184,7 @@ final class InlineEditEntityRulesTest extends TestCase
      */
     private function fieldErrors(): array
     {
-        $form = $this->rendered['form'] ?? null;
+        $form = $this->twig->vars['form'] ?? null;
         self::assertInstanceOf(FormView::class, $form);
 
         self::assertCount(0, $form->vars['errors'], 'Errors belong on the field, not the form');
