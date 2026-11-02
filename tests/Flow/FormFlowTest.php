@@ -8,6 +8,7 @@ use MyVars\FormFlow\FormFlow;
 use MyVars\FormFlow\Guard\AutoUpdateGuard;
 use MyVars\FormFlow\Redirect\RedirectorInterface;
 use MyVars\FormFlow\Tests\Double\RecordingFlasher;
+use MyVars\FormFlow\Tests\Double\RecordingTwig;
 use MyVars\FormFlow\Tests\Double\StubRedirectTarget;
 use MyVars\FormFlow\Tests\Double\StubResult;
 use MyVars\FormFlow\View\FlowContext;
@@ -32,19 +33,10 @@ final class FormFlowTest extends TestCase
 
         $forms = $this->createMock(FormFactoryInterface::class);
         $forms->expects($this->once())->method('create')
-            ->with('FormType', [], $this->callback(fn ($opts): bool => $opts['action'] === $request->getUri()))
+            ->with('FormType', [], ['action' => $request->getUri()])
             ->willReturn($form);
 
-        $twig = $this->createMock(Environment::class);
-        $twig->expects($this->once())->method('render')
-            ->with(
-                'shared/form_flow/base.html.twig',
-                $this->callback(fn (array $vars): bool => isset($vars['form'])
-                    && $vars['routes'] instanceof FlowRoutes
-                    && $vars['routes']->index === 'app_order_item_index')
-            )
-            ->willReturn('<html>GET</html>');
-
+        $twig = new RecordingTwig('<html>GET</html>');
         $flasher = new RecordingFlasher();
         $flow = new FormFlow($forms, $flasher, $twig, $this->createStub(UrlGeneratorInterface::class), $this->createStub(RedirectorInterface::class), new AutoUpdateGuard());
         $ctx = FlowContext::forCreate(FlowModel::simple('order_item'));
@@ -55,6 +47,10 @@ final class FormFlowTest extends TestCase
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertSame('<html>GET</html>', $response->getContent());
         self::assertSame([], $flasher->successes);
+        self::assertSame('shared/form_flow/base.html.twig', $twig->template);
+        self::assertInstanceOf(FormView::class, $twig->vars['form']);
+        self::assertInstanceOf(FlowRoutes::class, $twig->vars['routes']);
+        self::assertSame('app_order_item_index', $twig->vars['routes']->index);
     }
 
     public function testSuccessfulPostRedirectsAndFlashes(): void

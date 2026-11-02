@@ -25,18 +25,13 @@ final class ActionFlowTest extends TestCase
         $request = Request::create('/order', 'POST');
         $context = FlowContext::forCreate(FlowModel::simple('order_item'));
 
-        $urls = $this->createMock(UrlGeneratorInterface::class);
-        $urls->expects($this->once())->method('generate')
-            ->with('app_order_item_index', [])
-            ->willReturn('/gen/app_order_item_index');
-
         $redirector = $this->createMock(RedirectorInterface::class);
         $redirector->expects($this->once())->method('to')
-            ->with($request, '/gen/app_order_item_index', false, 303)
+            ->with($request, '/app_order_item_index', false, 303)
             ->willReturn(new Response('', 303));
 
         $flasher = new RecordingFlasher();
-        $flow = new ActionFlow($flasher, $redirector, $urls, $this->csrfNeverChecked());
+        $flow = new ActionFlow($flasher, $redirector, $this->urls(), $this->csrfNeverChecked());
 
         $response = $flow->process($request, new \stdClass(), $this->handlerOk('Saved'), $context);
 
@@ -50,14 +45,8 @@ final class ActionFlowTest extends TestCase
         $request = Request::create('/order', 'POST');
         $context = FlowContext::forCreate(FlowModel::simple('order_item'));
 
-        $urls = $this->createMock(UrlGeneratorInterface::class);
-        $urls->expects($this->once())->method('generate')->willReturn('/gen/app_order_item_index');
-
-        $redirector = $this->createMock(RedirectorInterface::class);
-        $redirector->expects($this->once())->method('to')->willReturn(new Response('', 303));
-
         $flasher = new RecordingFlasher();
-        $flow = new ActionFlow($flasher, $redirector, $urls, $this->csrfNeverChecked());
+        $flow = new ActionFlow($flasher, $this->redirector(), $this->urls(), $this->csrfNeverChecked());
 
         $response = $flow->process($request, new \stdClass(), $this->handlerFail('Failed'), $context);
 
@@ -97,14 +86,8 @@ final class ActionFlowTest extends TestCase
         $request = Request::create('/order', 'POST');
         $context = FlowContext::forCreate(FlowModel::simple('order_item'));
 
-        $urls = $this->createStub(UrlGeneratorInterface::class);
-        $urls->method('generate')->willReturn('/gen/app_order_item_index');
-
-        $redirector = $this->createMock(RedirectorInterface::class);
-        $redirector->expects($this->once())->method('to')->willReturn(new Response('', 303));
-
         $flasher = new RecordingFlasher();
-        $flow = new ActionFlow($flasher, $redirector, $urls, $this->csrfNeverChecked());
+        $flow = new ActionFlow($flasher, $this->redirector(), $this->urls(), $this->csrfNeverChecked());
 
         $response = $flow->process($request, new \stdClass(), $this->handlerOk(null), $context);
 
@@ -123,11 +106,8 @@ final class ActionFlowTest extends TestCase
             ->with('app_order_show', ['id' => 1])
             ->willReturn('/gen/app_order_show?id=1');
 
-        $redirector = $this->createMock(RedirectorInterface::class);
-        $redirector->expects($this->once())->method('to')->willReturn(new Response('', 303));
-
         $flasher = new RecordingFlasher();
-        $flow = new ActionFlow($flasher, $redirector, $urls, $this->csrfNeverChecked());
+        $flow = new ActionFlow($flasher, $this->redirector(), $urls, $this->csrfNeverChecked());
 
         $response = $flow->process($request, new \stdClass(), $this->handlerOk('Processed'), $context);
 
@@ -140,14 +120,8 @@ final class ActionFlowTest extends TestCase
         $request = Request::create('/task/7/complete', 'POST', ['_token' => 'good-token']);
         $context = FlowContext::forAction('app_task_show', ['id' => 7])->csrf('complete7');
 
-        $urls = $this->createStub(UrlGeneratorInterface::class);
-        $urls->method('generate')->willReturn('/gen/app_task_show?id=7');
-
-        $redirector = $this->createMock(RedirectorInterface::class);
-        $redirector->expects($this->once())->method('to')->willReturn(new Response('', 303));
-
         $flasher = new RecordingFlasher();
-        $flow = new ActionFlow($flasher, $redirector, $urls, $this->csrfExpecting('complete7', 'good-token', true));
+        $flow = new ActionFlow($flasher, $this->redirector(), $this->urls(), $this->csrfExpecting('complete7', 'good-token', true));
 
         $flow->process($request, new \stdClass(), $this->handlerOk('Completed'), $context);
 
@@ -185,14 +159,8 @@ final class ActionFlowTest extends TestCase
         $request = Request::create('/task/7/complete', 'POST');
         $context = FlowContext::forAction('app_task_show', ['id' => 7])->csrf('complete7');
 
-        $urls = $this->createStub(UrlGeneratorInterface::class);
-        $urls->method('generate')->willReturn('/gen/app_task_show?id=7');
-
-        $redirector = $this->createStub(RedirectorInterface::class);
-        $redirector->method('to')->willReturn(new Response('', 303));
-
         $flasher = new RecordingFlasher();
-        $flow = new ActionFlow($flasher, $redirector, $urls, $this->csrfExpecting('complete7', '', false));
+        $flow = new ActionFlow($flasher, $this->redirector(), $this->urls(), $this->csrfExpecting('complete7', '', false));
 
         $flow->process($request, new \stdClass(), fn () => self::fail('Handler must not run.'), $context);
 
@@ -222,9 +190,27 @@ final class ActionFlowTest extends TestCase
     {
         $csrf = $this->createMock(CsrfTokenManagerInterface::class);
         $csrf->expects($this->once())->method('isTokenValid')
-            ->with($this->callback(fn (CsrfToken $t): bool => $t->getId() === $id && $t->getValue() === $value))
+            ->with(new CsrfToken($id, $value))
             ->willReturn($valid);
 
         return $csrf;
+    }
+
+    /** Generates "/<route>", so a redirect expectation can name the route without a generator mock. */
+    private function urls(): UrlGeneratorInterface
+    {
+        $urls = $this->createStub(UrlGeneratorInterface::class);
+        $urls->method('generate')->willReturnCallback(fn (string $route): string => '/' . $route);
+
+        return $urls;
+    }
+
+    /** For tests that only need the flow to redirect, not to check how. */
+    private function redirector(): RedirectorInterface
+    {
+        $redirector = $this->createStub(RedirectorInterface::class);
+        $redirector->method('to')->willReturn(new Response('', 303));
+
+        return $redirector;
     }
 }
