@@ -12,6 +12,7 @@ use MyVars\FormFlow\Tests\Fixtures\SampleEntity;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
@@ -22,30 +23,6 @@ use Twig\Environment;
 final class InlineEditFlowTest extends TestCase
 {
     private const string CLOSURE_DEPRECATION = 'Since myvars/form-flow 1.5: Passing the value of inline edit "inline-edit-sample-1-name" as a Closure is deprecated: the success template refreshes the page, so pass the value itself.';
-
-    private function context(): InlineEditContext
-    {
-        return InlineEditContext::create(
-            frameId: 'inline-edit-sample-1-name',
-            displayTemplate: 'sample/_inline_name.html.twig',
-            entity: new SampleEntity(),
-        );
-    }
-
-    /**
-     * @return FormInterface<mixed>
-     */
-    private function formMock(bool $submitted, bool $valid, mixed $value): FormInterface
-    {
-        $form = $this->createStub(FormInterface::class);
-        $form->method('handleRequest');
-        $form->method('isSubmitted')->willReturn($submitted);
-        $form->method('isValid')->willReturn($valid);
-        $form->method('getData')->willReturn(new InlineFieldForm($value));
-        $form->method('createView')->willReturn(new FormView());
-
-        return $form;
-    }
 
     public function testGetWithoutEditRendersDisplayMode(): void
     {
@@ -146,21 +123,10 @@ final class InlineEditFlowTest extends TestCase
         $twig = $this->createStub(Environment::class);
         $twig->method('render')->willReturn('<form>errors</form>');
 
-        $called = false;
         $flow = new InlineEditFlow($forms, new RecordingFlasher(), $twig);
 
-        $response = $flow->handleField(
-            $request,
-            'Old',
-            function ($v) use (&$called): bool {
-                $called = true;
+        $response = $flow->handleField($request, 'Old', fn (): bool => self::fail('onSave must not run'), $this->context());
 
-                return true;
-            },
-            $this->context(),
-        );
-
-        self::assertFalse($called, 'onSave must not run for an invalid submission');
         self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
     }
 
@@ -216,7 +182,7 @@ final class InlineEditFlowTest extends TestCase
             ->with($this->anything(), $this->callback(static fn (array $vars): bool => $vars['value'] === null && $vars['mirrorText'] === null))
             ->willReturn('<turbo-stream>ok</turbo-stream>');
 
-        (new InlineEditFlow($forms, new RecordingFlasher(), $twig))
+        new InlineEditFlow($forms, new RecordingFlasher(), $twig)
             ->handleField($request, 'Old Name', fn ($v): bool => true, $this->context());
     }
 
@@ -232,7 +198,7 @@ final class InlineEditFlowTest extends TestCase
         $twig = $this->createStub(Environment::class);
         $twig->method('render')->willReturn('<form>edit</form>');
 
-        (new InlineEditFlow($forms, new RecordingFlasher(), $twig))
+        new InlineEditFlow($forms, new RecordingFlasher(), $twig)
             ->handleField($request, 'phpversion', fn ($v): bool => true, $this->context());
     }
 
@@ -279,7 +245,7 @@ final class InlineEditFlowTest extends TestCase
             return ++$calls === 1 ? 'typed' : $saved;
         };
 
-        (new InlineEditFlow($forms, new RecordingFlasher(), $twig))
+        new InlineEditFlow($forms, new RecordingFlasher(), $twig)
             ->handleField($request, $read, fn ($v): bool => true, $this->context());
 
         self::assertSame(2, $calls);
@@ -305,9 +271,35 @@ final class InlineEditFlowTest extends TestCase
             return 'Old';
         };
 
-        (new InlineEditFlow($forms, new RecordingFlasher(), $twig))
+        new InlineEditFlow($forms, new RecordingFlasher(), $twig)
             ->handleField($request, $read, fn ($v): bool => true, $this->context());
 
         self::assertSame(1, $calls);
+    }
+
+    private function context(): InlineEditContext
+    {
+        return InlineEditContext::create(
+            frameId: 'inline-edit-sample-1-name',
+            displayTemplate: 'sample/_inline_name.html.twig',
+            entity: new SampleEntity(),
+        );
+    }
+
+    /**
+     * @return FormInterface<mixed>
+     */
+    private function formMock(bool $submitted, bool $valid, mixed $value): FormInterface
+    {
+        $form = $this->createStub(FormInterface::class);
+        $form->method('handleRequest');
+        $form->method('isSubmitted')->willReturn($submitted);
+        $form->method('isValid')->willReturn($valid);
+        $form->method('getData')->willReturn(new InlineFieldForm($value));
+        $form->method('createView')->willReturn(new FormView());
+        // The flow turns an exception from onSave into a form error, which would swallow a self::fail() there.
+        $form->method('addError')->willReturnCallback(static fn (FormError $error) => self::fail('Unexpected form error: ' . $error->getMessage()));
+
+        return $form;
     }
 }

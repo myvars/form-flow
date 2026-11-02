@@ -19,14 +19,6 @@ final class TurboAwareRedirectorTest extends TestCase
         $this->redirector = new TurboAwareRedirector();
     }
 
-    private function getContent(Response $response): string
-    {
-        $content = $response->getContent();
-        self::assertIsString($content);
-
-        return $content;
-    }
-
     public function testTurboFrameHeaderReturnsStreamResponse(): void
     {
         $request = new Request();
@@ -104,5 +96,13 @@ final class TurboAwareRedirectorTest extends TestCase
 
         self::assertInstanceOf(RedirectResponse::class, $response);
         self::assertSame(303, $response->getStatusCode());
+    }
+
+    private function getContent(Response $response): string
+    {
+        $content = $response->getContent();
+        self::assertIsString($content);
+
+        return $content;
     }
 }

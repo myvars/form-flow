@@ -46,21 +46,15 @@ final class InlineEditEntityRulesTest extends TestCase
     public function testOverLengthValueIsAFieldErrorAndNotSaved(): void
     {
         $entity = new ValidatedEntity();
-        $saved = false;
 
         $response = $this->flow($this->validator)->handleField(
             $this->post('toolong'),
             $entity->name,
-            function () use (&$saved): bool {
-                $saved = true;
-
-                return true;
-            },
+            fn (): bool => self::fail('onSave must not run'),
             $this->context($entity, 'name'),
         );
 
         self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
-        self::assertFalse($saved);
         self::assertSame(['Max 5 characters'], $this->fieldErrors());
     }
 
