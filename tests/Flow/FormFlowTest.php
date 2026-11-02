@@ -25,45 +25,6 @@ use Twig\Environment;
 
 final class FormFlowTest extends TestCase
 {
-    /**
-     * @return FormInterface<mixed>
-     */
-    private function formMock(bool $submitted, bool $valid, mixed $data, bool $autoUpdate = false): FormInterface
-    {
-        $form = $this->createMock(FormInterface::class);
-        $form->expects($this->once())->method('handleRequest')->with($this->isInstanceOf(Request::class));
-        $form->method('isSubmitted')->willReturn($submitted);
-        $form->method('isValid')->willReturn($valid);
-        $form->method('getData')->willReturn($data);
-        $form->method('createView')->willReturn(new FormView());
-
-        if ($autoUpdate) {
-            $button = $this->createStubForIntersectionOfInterfaces([FormInterface::class, ClickableInterface::class]);
-            $button->method('isClicked')->willReturn(true);
-            $form->method('has')->willReturn(true);
-            $form->method('get')->willReturn($button);
-        } else {
-            $form->method('has')->willReturn(false);
-        }
-
-        return $form;
-    }
-
-    private function mapper(): callable
-    {
-        return fn (mixed $d) => (object) ['mapped' => $d];
-    }
-
-    private function handlerOk(?string $msg = 'Saved', ?StubRedirectTarget $rt = null): callable
-    {
-        return fn (object $cmd): StubResult => StubResult::ok($msg, $rt);
-    }
-
-    private function handlerFail(?string $msg = 'Failed'): callable
-    {
-        return fn (object $cmd): StubResult => StubResult::fail($msg);
-    }
-
     public function testGetRequestRendersTemplateOk(): void
     {
         $request = Request::create('/order/new', 'GET');
@@ -71,13 +32,13 @@ final class FormFlowTest extends TestCase
 
         $forms = $this->createMock(FormFactoryInterface::class);
         $forms->expects($this->once())->method('create')
-            ->with('FormType', $this->equalTo([]), $this->callback(fn ($opts): bool => $opts['action'] === $request->getUri()))
+            ->with('FormType', [], $this->callback(fn ($opts): bool => $opts['action'] === $request->getUri()))
             ->willReturn($form);
 
         $twig = $this->createMock(Environment::class);
         $twig->expects($this->once())->method('render')
             ->with(
-                $this->equalTo('shared/form_flow/base.html.twig'),
+                'shared/form_flow/base.html.twig',
                 $this->callback(fn (array $vars): bool => isset($vars['form'])
                     && $vars['routes'] instanceof FlowRoutes
                     && $vars['routes']->index === 'app_order_item_index')
@@ -224,5 +185,44 @@ final class FormFlowTest extends TestCase
         self::assertSame('<html>AUTO</html>', $response->getContent());
         self::assertSame([], $flasher->errors);
         self::assertSame([], $flasher->successes);
+    }
+
+    /**
+     * @return FormInterface<mixed>
+     */
+    private function formMock(bool $submitted, bool $valid, mixed $data, bool $autoUpdate = false): FormInterface
+    {
+        $form = $this->createMock(FormInterface::class);
+        $form->expects($this->once())->method('handleRequest')->with($this->isInstanceOf(Request::class));
+        $form->method('isSubmitted')->willReturn($submitted);
+        $form->method('isValid')->willReturn($valid);
+        $form->method('getData')->willReturn($data);
+        $form->method('createView')->willReturn(new FormView());
+
+        if ($autoUpdate) {
+            $button = $this->createStubForIntersectionOfInterfaces([FormInterface::class, ClickableInterface::class]);
+            $button->method('isClicked')->willReturn(true);
+            $form->method('has')->willReturn(true);
+            $form->method('get')->willReturn($button);
+        } else {
+            $form->method('has')->willReturn(false);
+        }
+
+        return $form;
+    }
+
+    private function mapper(): callable
+    {
+        return fn (mixed $d) => (object) ['mapped' => $d];
+    }
+
+    private function handlerOk(?string $msg = 'Saved', ?StubRedirectTarget $rt = null): callable
+    {
+        return fn (object $cmd): StubResult => StubResult::ok($msg, $rt);
+    }
+
+    private function handlerFail(?string $msg = 'Failed'): callable
+    {
+        return fn (object $cmd): StubResult => StubResult::fail($msg);
     }
 }

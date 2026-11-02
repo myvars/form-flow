@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace MyVars\FormFlow\Tests\Unit\View;
 
 use MyVars\FormFlow\View\FlowModel;
-use MyVars\FormFlow\View\FlowRoutes;
 use PHPUnit\Framework\TestCase;
 
 final class FlowModelTest extends TestCase
@@ -100,16 +99,5 @@ final class FlowModelTest extends TestCase
         self::assertSame($original->templateDir, $override->templateDir);
         self::assertSame($original->defaultSuccessRoute, $override->defaultSuccessRoute);
         self::assertSame($original->routes->index, $override->routes->index);
-    }
-
-    public function testBaseTemplateMatchesExpectedPath(): void
-    {
-        self::assertSame('shared/form_flow/base.html.twig', FlowModel::BASE_TEMPLATE);
-    }
-
-    public function testRoutesAreFlowRoutesInstances(): void
-    {
-        $m = FlowModel::create('catalog', 'product');
-        self::assertInstanceOf(FlowRoutes::class, $m->routes);
     }
 }

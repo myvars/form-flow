@@ -15,26 +15,6 @@ use Symfony\Component\Routing\RequestContext;
 
 final class FlowContextTest extends TestCase
 {
-    private function urlGenerator(): UrlGeneratorInterface
-    {
-        $stub = $this->createStub(UrlGeneratorInterface::class);
-
-        $stub->method('generate')->willReturnCallback(
-            static function (string $name, array $parameters = [], int $referenceType = UrlGeneratorInterface::ABSOLUTE_PATH): string {
-                ksort($parameters);
-                $query = $parameters !== [] ? '?' . http_build_query($parameters) : '';
-
-                return '/gen/' . $name . $query;
-            }
-        );
-
-        $context = new RequestContext();
-        $stub->method('getContext')->willReturn($context);
-        $stub->method('setContext')->willReturnCallback(static function ($new) use (&$context): void { $context = $new; });
-
-        return $stub;
-    }
-
     public function testFactoryForCreateSetsDefaults(): void
     {
         $model = FlowModel::create('catalog', 'manufacturer');
@@ -172,5 +152,25 @@ final class FlowContextTest extends TestCase
 
         $this->expectException(\LogicException::class);
         $ctx->validate();
+    }
+
+    private function urlGenerator(): UrlGeneratorInterface
+    {
+        $stub = $this->createStub(UrlGeneratorInterface::class);
+
+        $stub->method('generate')->willReturnCallback(
+            static function (string $name, array $parameters = [], int $referenceType = UrlGeneratorInterface::ABSOLUTE_PATH): string {
+                ksort($parameters);
+                $query = $parameters !== [] ? '?' . http_build_query($parameters) : '';
+
+                return '/gen/' . $name . $query;
+            }
+        );
+
+        $context = new RequestContext();
+        $stub->method('getContext')->willReturn($context);
+        $stub->method('setContext')->willReturnCallback(static function ($new) use (&$context): void { $context = $new; });
+
+        return $stub;
     }
 }

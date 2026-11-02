@@ -31,6 +31,52 @@ use Twig\Environment;
  */
 final class FormFlowBundleTest extends TestCase
 {
+    /**
+     * @return iterable<string, array{class-string}>
+     */
+    public static function flowProvider(): iterable
+    {
+        yield 'FormFlow' => [FormFlow::class];
+        yield 'ActionFlow' => [ActionFlow::class];
+        yield 'ConfirmFlow' => [ConfirmFlow::class];
+        yield 'SearchFlow' => [SearchFlow::class];
+        yield 'InlineEditFlow' => [InlineEditFlow::class];
+    }
+
+    /**
+     * @param class-string $flowClass
+     */
+    #[DataProvider('flowProvider')]
+    public function testFlowServiceIsRegisteredAndAutowired(string $flowClass): void
+    {
+        self::assertInstanceOf($flowClass, $this->compileContainer()->get($flowClass));
+    }
+
+    public function testInlineEditFlowGetsTheValidatorWhenTheAppHasOne(): void
+    {
+        $container = $this->compileContainer(withValidator: true);
+
+        self::assertSame(
+            $container->get(ValidatorInterface::class),
+            $this->validatorOf($container->get(InlineEditFlow::class)),
+        );
+    }
+
+    public function testInlineEditFlowWorksWithoutAValidator(): void
+    {
+        self::assertNull($this->validatorOf($this->compileContainer()->get(InlineEditFlow::class)));
+    }
+
+    public function testRedirectorPortResolvesToTurboAwareRedirector(): void
+    {
+        self::assertInstanceOf(TurboAwareRedirector::class, $this->compileContainer()->get(RedirectorInterface::class));
+    }
+
+    public function testFlasherPortResolvesToTheAppAdapter(): void
+    {
+        self::assertInstanceOf(RecordingFlasher::class, $this->compileContainer()->get(FlasherInterface::class));
+    }
+
     private function compileContainer(bool $withValidator = false): ContainerBuilder
     {
         $container = new ContainerBuilder();
@@ -80,56 +126,10 @@ final class FormFlowBundleTest extends TestCase
         return $container;
     }
 
-    /**
-     * @return iterable<string, array{class-string}>
-     */
-    public static function flowProvider(): iterable
-    {
-        yield 'FormFlow' => [FormFlow::class];
-        yield 'ActionFlow' => [ActionFlow::class];
-        yield 'ConfirmFlow' => [ConfirmFlow::class];
-        yield 'SearchFlow' => [SearchFlow::class];
-        yield 'InlineEditFlow' => [InlineEditFlow::class];
-    }
-
-    /**
-     * @param class-string $flowClass
-     */
-    #[DataProvider('flowProvider')]
-    public function testFlowServiceIsRegisteredAndAutowired(string $flowClass): void
-    {
-        self::assertInstanceOf($flowClass, $this->compileContainer()->get($flowClass));
-    }
-
-    public function testInlineEditFlowGetsTheValidatorWhenTheAppHasOne(): void
-    {
-        $container = $this->compileContainer(withValidator: true);
-
-        self::assertSame(
-            $container->get(ValidatorInterface::class),
-            $this->validatorOf($container->get(InlineEditFlow::class)),
-        );
-    }
-
-    public function testInlineEditFlowWorksWithoutAValidator(): void
-    {
-        self::assertNull($this->validatorOf($this->compileContainer()->get(InlineEditFlow::class)));
-    }
-
     private function validatorOf(?object $flow): mixed
     {
         self::assertInstanceOf(InlineEditFlow::class, $flow);
 
         return new \ReflectionProperty(InlineEditFlow::class, 'validator')->getValue($flow);
-    }
-
-    public function testRedirectorPortResolvesToTurboAwareRedirector(): void
-    {
-        self::assertInstanceOf(TurboAwareRedirector::class, $this->compileContainer()->get(RedirectorInterface::class));
-    }
-
-    public function testFlasherPortResolvesToTheAppAdapter(): void
-    {
-        self::assertInstanceOf(RecordingFlasher::class, $this->compileContainer()->get(FlasherInterface::class));
     }
 }

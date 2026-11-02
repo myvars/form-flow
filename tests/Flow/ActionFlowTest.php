@@ -20,35 +20,6 @@ use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 final class ActionFlowTest extends TestCase
 {
-    private function handlerOk(?string $msg = 'Done', ?StubRedirectTarget $rt = null): callable
-    {
-        return fn (object $cmd): StubResult => StubResult::ok($msg, $rt);
-    }
-
-    private function handlerFail(?string $msg = 'Failed'): callable
-    {
-        return fn (object $cmd): StubResult => StubResult::fail($msg);
-    }
-
-    /** Without FlowContext::csrf() the flow must not look at any token. */
-    private function csrfNeverChecked(): CsrfTokenManagerInterface
-    {
-        $csrf = $this->createMock(CsrfTokenManagerInterface::class);
-        $csrf->expects($this->never())->method('isTokenValid');
-
-        return $csrf;
-    }
-
-    private function csrfExpecting(string $id, string $value, bool $valid): CsrfTokenManagerInterface
-    {
-        $csrf = $this->createMock(CsrfTokenManagerInterface::class);
-        $csrf->expects($this->once())->method('isTokenValid')
-            ->with($this->callback(fn (CsrfToken $t): bool => $t->getId() === $id && $t->getValue() === $value))
-            ->willReturn($valid);
-
-        return $csrf;
-    }
-
     public function testProcessSuccessAddsSuccessFlashAndRedirectsToSuccessRoute(): void
     {
         $request = Request::create('/order', 'POST');
@@ -202,16 +173,8 @@ final class ActionFlowTest extends TestCase
         $flasher = new RecordingFlasher();
         $flow = new ActionFlow($flasher, $redirector, $urls, $this->csrfExpecting('complete7', 'bad-token', false));
 
-        $called = false;
-        $handler = function () use (&$called): StubResult {
-            $called = true;
+        $response = $flow->process($request, new \stdClass(), fn () => self::fail('Handler must not run.'), $context);
 
-            return StubResult::ok('Completed');
-        };
-
-        $response = $flow->process($request, new \stdClass(), $handler, $context);
-
-        self::assertFalse($called);
         self::assertSame(303, $response->getStatusCode());
         self::assertSame(['Invalid CSRF token.'], $flasher->errors);
         self::assertSame([], $flasher->successes);
@@ -234,5 +197,34 @@ final class ActionFlowTest extends TestCase
         $flow->process($request, new \stdClass(), fn () => self::fail('Handler must not run.'), $context);
 
         self::assertSame(['Invalid CSRF token.'], $flasher->errors);
+    }
+
+    private function handlerOk(?string $msg = 'Done', ?StubRedirectTarget $rt = null): callable
+    {
+        return fn (object $cmd): StubResult => StubResult::ok($msg, $rt);
+    }
+
+    private function handlerFail(?string $msg = 'Failed'): callable
+    {
+        return fn (object $cmd): StubResult => StubResult::fail($msg);
+    }
+
+    /** Without FlowContext::csrf() the flow must not look at any token. */
+    private function csrfNeverChecked(): CsrfTokenManagerInterface
+    {
+        $csrf = $this->createMock(CsrfTokenManagerInterface::class);
+        $csrf->expects($this->never())->method('isTokenValid');
+
+        return $csrf;
+    }
+
+    private function csrfExpecting(string $id, string $value, bool $valid): CsrfTokenManagerInterface
+    {
+        $csrf = $this->createMock(CsrfTokenManagerInterface::class);
+        $csrf->expects($this->once())->method('isTokenValid')
+            ->with($this->callback(fn (CsrfToken $t): bool => $t->getId() === $id && $t->getValue() === $value))
+            ->willReturn($valid);
+
+        return $csrf;
     }
 }

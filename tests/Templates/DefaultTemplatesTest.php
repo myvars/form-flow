@@ -22,29 +22,6 @@ use Twig\TwigFunction;
  */
 final class DefaultTemplatesTest extends TestCase
 {
-    private function twig(): Environment
-    {
-        $twig = new Environment(new FilesystemLoader([\dirname(__DIR__, 2) . '/templates']), ['strict_variables' => true]);
-
-        // Stubs for the Symfony Twig functions the host app supplies.
-        foreach (['form', 'form_start', 'form_end', 'form_widget', 'form_rest', 'form_errors'] as $fn) {
-            $twig->addFunction(new TwigFunction($fn, static fn (): string => '', ['is_safe' => ['html']]));
-        }
-        $twig->addFunction(new TwigFunction('path', static fn (string $route, array $params = []): string => '/' . $route));
-        $twig->addFunction(new TwigFunction('csrf_token', static fn (string $id): string => 'token-' . $id));
-
-        return $twig;
-    }
-
-    private function inlineContext(): InlineEditContext
-    {
-        return InlineEditContext::create(
-            frameId: 'frame-1',
-            displayTemplate: 'shared/form_flow/missing.html.twig', // any resolvable template
-            entity: new SampleEntity(),
-        );
-    }
-
     /**
      * @return iterable<string, array{string, array<string, mixed>}>
      */
@@ -95,5 +72,28 @@ final class DefaultTemplatesTest extends TestCase
         $html = $this->twig()->render('shared/form_flow/inline_edit_success.stream.html.twig', ['context' => $this->inlineContext()]);
 
         self::assertSame('<turbo-stream action="refresh" scroll="preserve"></turbo-stream>', trim($html));
+    }
+
+    private function twig(): Environment
+    {
+        $twig = new Environment(new FilesystemLoader([\dirname(__DIR__, 2) . '/templates']), ['strict_variables' => true]);
+
+        // Stubs for the Symfony Twig functions the host app supplies.
+        foreach (['form', 'form_start', 'form_end', 'form_widget', 'form_rest', 'form_errors'] as $fn) {
+            $twig->addFunction(new TwigFunction($fn, static fn (): string => '', ['is_safe' => ['html']]));
+        }
+        $twig->addFunction(new TwigFunction('path', static fn (string $route, array $params = []): string => '/' . $route));
+        $twig->addFunction(new TwigFunction('csrf_token', static fn (string $id): string => 'token-' . $id));
+
+        return $twig;
+    }
+
+    private function inlineContext(): InlineEditContext
+    {
+        return InlineEditContext::create(
+            frameId: 'frame-1',
+            displayTemplate: 'shared/form_flow/missing.html.twig', // any resolvable template
+            entity: new SampleEntity(),
+        );
     }
 }
