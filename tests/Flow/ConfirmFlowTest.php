@@ -29,7 +29,7 @@ final class ConfirmFlowTest extends TestCase
         $context = FlowContext::forDelete(FlowModel::simple('order_item'));
 
         $twig = new RecordingTwig('<html>confirm</html>');
-        $actionFlow = new ActionFlow(new RecordingFlasher(), $this->redirector(), $this->urls(), $this->createStub(CsrfTokenManagerInterface::class));
+        $actionFlow = new ActionFlow(new RecordingFlasher(), $this->createStub(RedirectorInterface::class), $this->createStub(UrlGeneratorInterface::class), $this->createStub(CsrfTokenManagerInterface::class));
         $flow = new ConfirmFlow($twig, $actionFlow);
 
         $response = $flow->confirm($entity, $context);
@@ -158,11 +158,13 @@ final class ConfirmFlowTest extends TestCase
         return $csrf;
     }
 
-    /** Generates "/<route>", so a redirect expectation can name the route without a generator mock. */
+    /** Generates "/<route>?<params>", so a redirect expectation can name the route without a generator mock. */
     private function urls(): UrlGeneratorInterface
     {
         $urls = $this->createStub(UrlGeneratorInterface::class);
-        $urls->method('generate')->willReturnCallback(fn (string $route): string => '/' . $route);
+        $urls->method('generate')->willReturnCallback(
+            fn (string $route, array $params = []): string => '/' . $route . ($params === [] ? '' : '?' . http_build_query($params)),
+        );
 
         return $urls;
     }

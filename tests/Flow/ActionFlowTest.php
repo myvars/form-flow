@@ -196,11 +196,13 @@ final class ActionFlowTest extends TestCase
         return $csrf;
     }
 
-    /** Generates "/<route>", so a redirect expectation can name the route without a generator mock. */
+    /** Generates "/<route>?<params>", so a redirect expectation can name the route without a generator mock. */
     private function urls(): UrlGeneratorInterface
     {
         $urls = $this->createStub(UrlGeneratorInterface::class);
-        $urls->method('generate')->willReturnCallback(fn (string $route): string => '/' . $route);
+        $urls->method('generate')->willReturnCallback(
+            fn (string $route, array $params = []): string => '/' . $route . ($params === [] ? '' : '?' . http_build_query($params)),
+        );
 
         return $urls;
     }
