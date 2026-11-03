@@ -76,8 +76,9 @@ final readonly class Result implements ResultInterface
 <a id="redirect"></a>
 ## `RedirectTargetInterface`
 
-Returned inside a successful `Result` when a handler wants the flow to redirect somewhere specific
-instead of the default success route (for example, to the newly created entity's show page).
+Returned inside a `Result` when a handler wants the flow to redirect somewhere specific instead of the
+success route, for example to the newly created entity's show page. `FormFlow` follows it only on
+success, `ActionFlow` on either outcome ([redirect precedence](flows.md#redirect-precedence)).
 
 ```php
 interface RedirectTargetInterface

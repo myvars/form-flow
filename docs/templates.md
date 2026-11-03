@@ -50,9 +50,10 @@ for `FormFlow` and `ConfirmFlow`. `SearchFlow` ignores it and always uses `{temp
 then `shared/form_flow/index.html.twig`. The chain is in `base.html.twig`, so an app that overrides `base`
 decides resolution for every flow.
 
-> **`forConfirm()` without `->template()` renders `missing.html.twig`.** Its operation is `action`, and
-> the bundle ships no `shared/form_flow/action.html.twig`. Unless you provide
-> `{templateDir}/action.html.twig`, always pass `->template()` with `forConfirm()`.
+> **`forConfirm()` without `->template()` renders `missing.html.twig`** with the default `base` (with a
+> `base` that has no fallback chain, such as the minimal one below, it is a Twig error). Its operation is
+> `action`, and the bundle ships no `shared/form_flow/action.html.twig`. Pass `->template()` with
+> `forConfirm()`, or provide `{templateDir}/action.html.twig`.
 
 > **Note:** the default `delete` and `index` templates assume the entity exposes `id`. Apps keyed on a
 > different identifier (e.g. `public_id`) should override those two.

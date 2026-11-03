@@ -11,7 +11,7 @@ composer install
 All three must pass before a change is merged:
 
 ```bash
-composer test       # PHPUnit (unit + flow + bundle integration)
+composer test       # PHPUnit: unit, flow, integration and template tests
 composer phpstan    # PHPStan level 7
 composer cs         # php-cs-fixer (dry-run); use `composer cs-fix` to apply
 ```
@@ -34,7 +34,13 @@ How each test is written. Bring a test in line when you change it.
 
 - Code style: `@Symfony` rules, no Yoda conditions (`$value === null`, not `null === $value`;
   `composer cs` rejects them, `composer cs-fix` rewrites them), spaced concatenation (`'a' . $b`).
-- Full type hints on every method; `readonly` and constructor promotion where possible.
+- `declare(strict_types=1)` in every new file. Most of `src/` predates the rule and does not have it yet.
+- Full type hints on every method; `readonly` and constructor promotion where possible, services
+  included. On PHP 8.4+ Symfony makes lazy services with native lazy objects, which work with
+  `final readonly` classes.
+- No request data in a service property. The flows are shared services, and long-running workers
+  (FrankenPHP worker mode, Messenger) let one instance serve many requests, so a flow reads the request
+  it is given and keeps nothing from it.
 - The package must depend only on framework packages and its own `Contract\` ports —
   never on a consuming application's classes. Tests use the doubles in `tests/Double/`.
 - The package ships design-neutral default templates (`templates/shared/form_flow/*`); apps override any

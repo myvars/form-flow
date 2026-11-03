@@ -6,7 +6,7 @@ Guidance for working on `myvars/form-flow`. The detail is in [CONTRIBUTING.md](C
 ## Commands
 
 ```bash
-composer test       # PHPUnit: unit, flow, integration and template suites
+composer test       # PHPUnit: unit, flow, integration and template tests
 composer phpstan    # PHPStan level 7
 composer cs         # PHP-CS-Fixer dry run; composer cs-fix applies it
 ```
@@ -27,13 +27,12 @@ app's layering) belong in that app's docs, which link here.
 
 ## Code style
 
-- `@Symfony` rules, non-Yoda comparisons, spaced concatenation (`'a' . $b`); `composer cs-fix` applies them.
-- `declare(strict_types=1)` in every new file. Most of `src/` predates the rule and does not have it yet.
-- Full type hints on every method; constructor promotion; `readonly` where possible, services included.
-  On PHP 8.4+ Symfony makes lazy services with native lazy objects, which work with `final readonly` classes.
-- **No request data in a service property.** The flows are shared services, and the apps run FrankenPHP
-  in worker mode and Messenger workers, so one instance serves many requests. A flow reads the request it
-  is given and keeps nothing from it.
+Follow [CONTRIBUTING.md › Conventions](CONTRIBUTING.md#conventions). The rules most easily missed:
+
+- `declare(strict_types=1)` in every new file; most of `src/` predates the rule.
+- `readonly` services are fine (PHP 8.4+ native lazy objects); don't remove it to allow a lazy proxy.
+- **No request data in a service property.** Long-running workers (FrankenPHP worker mode, Messenger)
+  reuse one flow instance across requests.
 
 ## Compatibility
 
