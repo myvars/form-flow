@@ -237,7 +237,7 @@ final class FlowContext
      */
     public function validateForCommand(): void
     {
-        if (null === $this->successRoute) {
+        if ($this->successRoute === null) {
             throw new \LogicException('Success route not configured.');
         }
     }
