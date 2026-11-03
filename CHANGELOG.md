@@ -28,6 +28,11 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
   callback that declares `int` or `float` for it used to have the string coerced and now gets a
   `TypeError`, which the flow shows as a form error. Leave the parameter untyped or type it `?string`,
   and convert the value in the callback.
+- `composer.json` now conflicts with the releases of three transitive dependencies that emit PHP 8.4+
+  deprecations for implicitly nullable parameters: `symfony/property-info` below 6.4.3 and 7.0.0–7.0.2,
+  `symfony/event-dispatcher-contracts` below 2.5.3 and 3.0.0–3.4.0, and `symfony/translation-contracts`
+  below 2.5.3 and 3.0.0–3.4.1. Symfony 8.1's own constraints still allow them. CI now also runs the suite
+  against the lowest versions `composer.json` allows, which found them.
 
 ## [1.5.0] - 2026-10-26
 
