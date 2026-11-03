@@ -6,6 +6,22 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+### Fixed
+
+- `SearchFlow`: a page past the last one, requested inside a Turbo Frame, now reaches page 1. It used to
+  answer with a `refresh` stream, which reloads the browser's current URL: an extra round trip when the
+  frame advances the URL, and no move to page 1 when it doesn't.
+
+### Changed
+
+- `TurboAwareRedirector` answers with a Turbo Stream only when the request has a `Turbo-Frame` header and
+  its `Accept` header lists `text/vnd.turbo-stream.html`, which Turbo sends for a non-`GET` form and for
+  a `GET` with `data-turbo-stream`. A frame navigation (a link or `GET` form inside a frame) now gets a
+  normal redirect, which Turbo follows inside the frame. Form submissions inside a frame are unchanged.
+  Functional tests that send only a `Turbo-Frame` header and expect a stream must now also send
+  `Accept: text/vnd.turbo-stream.html`. A flash set before such a redirect shows only if the app renders
+  flashes in the frame's response.
+
 ## [1.5.0] - 2026-10-26
 
 ### Changed

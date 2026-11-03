@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MyVars\FormFlow\Tests\Flow;
 
 use MyVars\FormFlow\Redirect\RedirectorInterface;
+use MyVars\FormFlow\Redirect\TurboAwareRedirector;
 use MyVars\FormFlow\SearchFlow;
 use MyVars\FormFlow\Tests\Double\RecordingFlasher;
 use MyVars\FormFlow\Tests\Double\RecordingTwig;
@@ -15,6 +16,7 @@ use MyVars\FormFlow\View\FlowRoutes;
 use Pagerfanta\Adapter\ArrayAdapter;
 use Pagerfanta\Pagerfanta;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -68,6 +70,29 @@ final class SearchFlowTest extends TestCase
         $response = $flow->search($request, $adapter, $criteria, FlowContext::forSearch(FlowModel::simple('order_item')));
 
         self::assertSame(303, $response->getStatusCode());
+        self::assertSame(['Page 99 not found.'], $flasher->warnings);
+    }
+
+    public function testSearchOutOfRangeInsideTurboFrameRedirectsToPageOne(): void
+    {
+        // A pagination link or GET search form inside a frame. Turbo follows the redirect within the frame;
+        // a refresh stream would reload the browser's current URL instead of page 1.
+        $request = Request::create('/order-item', 'GET', ['foo' => 'bar', 'page' => '99']);
+        $request->headers->set('Turbo-Frame', 'results');
+        $request->headers->set('Accept', 'text/html, application/xhtml+xml');
+        $criteria = new StubSearchCriteria(page: 99, limit: 2);
+
+        $urls = $this->createStub(UrlGeneratorInterface::class);
+        $urls->method('generate')->willReturn('/order-item?foo=bar&page=1');
+
+        $flasher = new RecordingFlasher();
+        $flow = new SearchFlow($this->createStub(Environment::class), $flasher, new TurboAwareRedirector(), $urls);
+
+        $response = $flow->search($request, new ArrayAdapter(['A', 'B', 'C']), $criteria, FlowContext::forSearch(FlowModel::simple('order_item')));
+
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        self::assertSame(303, $response->getStatusCode());
+        self::assertSame('/order-item?foo=bar&page=1', $response->getTargetUrl());
         self::assertSame(['Page 99 not found.'], $flasher->warnings);
     }
 }

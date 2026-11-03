@@ -358,21 +358,29 @@ What each flow answers with. "Redirect" means a `303` redirect, or the status th
 | `InlineEditFlow`, invalid value, or one that breaks the entity's rules | `422`, form re-rendered with its errors |
 | `InlineEditFlow`, `onSave` throws | `422`, form re-rendered with the exception's message as its error (so throw messages fit for users) |
 | `InlineEditFlow`, saved | `200` Turbo Stream from the [success template](#after-a-save) (`refresh`) |
-| Any redirect, on a request with a `Turbo-Frame` header | `200` Turbo Stream (`refresh` or `redirect`), see [Turbo-aware redirects](#turbo-aware-redirects) |
+| Any redirect, on a frame request that accepts a Turbo Stream | `200` Turbo Stream (`refresh` or `redirect`), see [Turbo-aware redirects](#turbo-aware-redirects) |
 
 <a id="turbo-aware-redirects"></a>
 ## Turbo-aware redirects
 
-`FormFlow`, `ActionFlow`, `ConfirmFlow` and `SearchFlow` redirect through `TurboAwareRedirector` (the `RedirectorInterface` service). Without a
-`Turbo-Frame` request header it sends a normal redirect. With one (a form submitted inside a frame, such
-as a modal) it answers `200` with a Turbo Stream, because a redirect would only reload that frame:
+`FormFlow`, `ActionFlow`, `ConfirmFlow` and `SearchFlow` redirect through `TurboAwareRedirector` (the `RedirectorInterface` service). It
+answers `200` with a Turbo Stream when the request has a `Turbo-Frame` header and its `Accept` header
+lists `text/vnd.turbo-stream.html`: a form submitted inside a frame, such as a modal, where a redirect
+would only reload that frame. Turbo sends that `Accept` for a `POST`, `PUT`, `PATCH` or `DELETE` form, and
+for a `GET` link or form only with `data-turbo-stream`. Any other request, a frame navigation included,
+gets a normal redirect, which Turbo follows inside the frame:
 
-| Redirect | With a `Turbo-Frame` header | Without |
-|----------|-----------------------------|---------|
+| Redirect | Frame request accepting a stream | Otherwise |
+|----------|----------------------------------|-----------|
 | To the success route (`forCreate`, `forUpdate`, `forFilter`, `forAction`) | `<turbo-stream action="refresh">`: the page reloads in place | redirect to the success URL |
 | To the success route, `forDelete()` or `forConfirm()` (smart navigation) | `<turbo-stream action="redirect" url="…">` when the success URL's path differs from the referer's; otherwise, or with no referer, `refresh` | redirect to the success URL |
 | To a handler's `RedirectTarget` | always `<turbo-stream action="redirect" url="…">` | redirect with the target's status |
-| `SearchFlow` to page 1 | `refresh` | redirect to the index route with `page=1` |
+
+A page past the last one makes `SearchFlow` redirect to the index route with `page=1`. That request is a
+`GET`, so inside a frame (pagination or a search form targeting it) it is a normal redirect too, and the
+frame shows page 1. Turbo renders only the frame from that response, so the `Page N not found.` flash
+shows only if the app renders flashes inside the frame (or sends them as a stream); a layout that prints
+flashes outside it leaves the flash for the next full page load.
 
 Smart navigation handles deleting a record from its own page: refreshing that page would show a record
 that no longer exists, so the flow navigates to the success route (the index, by default). Deleting the
