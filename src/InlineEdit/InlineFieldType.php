@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace MyVars\FormFlow\InlineEdit;
 
 use Symfony\Component\Form\AbstractType;
