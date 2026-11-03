@@ -9,6 +9,10 @@ describing the run. This page shows a complete, copy-pasteable example for all f
 - [ConfirmFlow — confirm then execute](#confirmflow)
 - [SearchFlow — paginated index](#searchflow)
 - [InlineEditFlow — inline field editing](#inlineeditflow)
+- [Responses](#responses)
+- [Turbo-aware redirects](#turbo-aware-redirects)
+- [Flashes](#flashes)
+- [Embedded forms](#embedded-forms)
 - [`FlowContext` reference](#flowcontext)
 - [`FlowModel` reference](#flowmodel)
 
@@ -50,9 +54,58 @@ public function edit(Request $request, Task $task, UpdateTaskMapper $mapper, Upd
 }
 ```
 
-> **Mappers** are simple `__invoke` callables (`form DTO → command`). Keep them in
-> `UI/Http/Form/Mapper/`. A handler returns a [`ResultInterface`](adapters.md#result); return
-> `Result::ok(redirect: new RedirectTarget(...))` to force a specific destination.
+The **mapper** is any callable that takes the form's data and returns the command object (the flow throws
+a `LogicException` if it returns anything else). The **handler** takes the command and returns a
+[`ResultInterface`](adapters.md#result); return `Result::ok(redirect: new RedirectTarget(...))` to send
+the user somewhere other than the success route (see [redirect precedence](#redirect-precedence)).
+
+### A record's id comes from the route
+
+For an update, take the record's id from the route's entity (`TaskForm::fromEntity($task)` above), and
+give the form type no field for it. The mapper then reads the id the controller set, not one the browser
+posted. A hidden id field would let a post act on a record other than the one the route loaded and your
+access check passed. A post that adds the field anyway is refused by Symfony with "This form should not
+contain extra fields." (422).
+
+### Mapping with `ObjectMapper`
+
+When the command has the same property names as the form model, the package's
+`MyVars\FormFlow\Mapper\ObjectMapper` can be the mapper instead of a class of your own. It wraps Symfony's
+[ObjectMapper](https://symfony.com/doc/current/object_mapper.html) (`symfony/object-mapper`): it maps the
+form data to the target class, filling constructor arguments and properties by name (use `#[Map]` on the
+form model to rename or transform a property), and returns the data unchanged if it already is the
+target class. It is not a service; build it in the action:
+
+```php
+use MyVars\FormFlow\Mapper\ObjectMapper;
+use Symfony\Component\ObjectMapper\ObjectMapperInterface;
+
+public function new(Request $request, ObjectMapperInterface $objectMapper, CreateTaskHandler $handler, FormFlow $flow): Response
+{
+    return $flow->form(
+        // ...
+        mapper: new ObjectMapper($objectMapper, CreateTask::class),
+        // ...
+    );
+}
+```
+
+Write your own mapper when the mapping needs anything else, such as the id from the route.
+
+### Auto-update submits
+
+A form can resubmit itself when a field changes, so the server re-renders it (for example, to fill a
+dependent choice field) without saving. Give the form a submit button named `auto-update` and click it
+from the browser when the field changes:
+
+```php
+$builder->add('auto-update', SubmitType::class);   // hide it; your JavaScript clicks it on change
+```
+
+When that button submitted the form, `FormFlow` (through `AutoUpdateGuard`) runs no mapper or handler,
+clears the form's errors so the user isn't shown messages about fields they haven't filled in yet, and
+re-renders the form with a 422, so that Turbo renders the response. The package supplies only the server
+side; the JavaScript that clicks the button on a change is the app's.
 
 ---
 
@@ -80,7 +133,8 @@ public function complete(Request $request, Task $task, CompleteTaskHandler $hand
 }
 ```
 
-An action changes state, so route it as `POST` and add `->csrf($tokenId)`. The flow then checks the
+An action changes state, so route it as `POST` (`methods: ['POST']`). The flow does not check the
+method itself: routed for `GET` as well, a plain link would run it. Add `->csrf($tokenId)` too. The flow then checks the
 posted `_token` field against that id before calling the handler; on a mismatch it flashes
 "Invalid CSRF token." and redirects to the success route without running the action. Pass the full
 token id and render the trigger as a form with the same one:
@@ -132,12 +186,23 @@ The command passed to `execute()` must expose an `id` (`$command->id`); the CSRF
 `confirmKey . id`. For a non-delete action:
 
 ```php
-FlowContext::forConfirm(FlowModel::create('purchasing', 'purchase_order'), 'rewind')
-    ->successRoute('app_purchasing_purchase_order_show', ['id' => (string) $po->getId()]);
+// GET: the confirmation page
+FlowContext::forConfirm(FlowModel::create('demo', 'task'), 'archive')
+    ->template('demo/task/archive.html.twig');
+
+// POST: the action
+FlowContext::forConfirm(FlowModel::create('demo', 'task'), 'archive')
+    ->successRoute('app_demo_task_show', ['id' => (string) $task->getId()]);
 ```
 
-> The confirmation template receives a `confirmKey` variable — render your `ConfirmDialog` token with
-> it (`csrfId: confirmKey ~ entity.id`). See the [template contract](templates.md).
+> Always pass `->template()` to the context for `confirm()` when you use `forConfirm()`. Its operation is
+> `action`, and the bundle has no `shared/form_flow/action.html.twig`, so without it the page is
+> `missing.html.twig` unless you provide `{templateDir}/action.html.twig`
+> ([template resolution](templates.md#template-resolution)).
+
+The confirmation template receives a `confirmKey` variable. Render a form that posts to the action with a
+CSRF token whose id is `confirmKey ~ entity.id`, which is what `execute()` checks (see the
+[template contract](templates.md#a-minimal-basehtmltwig)).
 
 ---
 
@@ -193,15 +258,17 @@ public function handleField(
 
 ```php
 #[Route('/task/{id}/inline/title', name: 'app_demo_task_inline_title', methods: ['GET', 'POST'])]
-public function inlineTitle(Request $request, Task $task, InlineEditFlow $flow, FlusherInterface $flusher): Response
+public function inlineTitle(Request $request, Task $task, InlineEditFlow $flow, EntityManagerInterface $em): Response
 {
     return $flow->handleField(
         request: $request,
         value: $task->getTitle(),
-        onSave: function (mixed $value) use ($task, $flusher): bool {
+        onSave: function (mixed $value) use ($task, $em): bool {
+            $changed = $task->getTitle() !== $value;
             $task->rename((string) $value);
+            $em->flush();
 
-            return $flusher->flush();   // return whether the DB actually changed (controls the flash)
+            return $changed;   // whether anything changed (controls the flash)
         },
         context: InlineEditContext::create(
             frameId: 'inline-edit-task-' . $task->getId() . '-title',
@@ -217,7 +284,7 @@ public function inlineTitle(Request $request, Task $task, InlineEditFlow $flow, 
 
 | Parameter | Default | Purpose |
 |-----------|---------|---------|
-| `frameId` | — | Turbo Frame id (must match the `InlineEdit` component) |
+| `frameId` | — | Turbo Frame id (must match the frame the page renders around the field) |
 | `displayTemplate` | — | template rendered on success/display |
 | `entity` | — | the entity being edited |
 | `cancelUrl` | request path | URL that returns display mode |
@@ -275,6 +342,80 @@ Pass the value itself instead (`value: $task->getTitle()`). Both are removed in 
 
 ---
 
+<a id="responses"></a>
+## Responses
+
+What each flow answers with. "Redirect" means a `303` redirect, or the status the handler's
+`RedirectTarget` gives; inside a Turbo Frame it is a Turbo Stream instead (see
+[Turbo-aware redirects](#turbo-aware-redirects)).
+
+| Case | Response |
+|------|----------|
+| `GET`: a form (`FormFlow`), a confirmation page (`ConfirmFlow::confirm()`), an index (`SearchFlow`) | `200` |
+| `FormFlow`, valid `POST`, handler `ok` | redirect, success flash |
+| `FormFlow`, valid `POST`, handler `fail` | `422`, form re-rendered, error flash |
+| `FormFlow`, invalid `POST` | `422`, form re-rendered with its errors |
+| `FormFlow`, [auto-update](#auto-update-submits) submit | `422`, form re-rendered with its errors cleared; no handler runs |
+| `ActionFlow` and `ConfirmFlow::execute()`, any outcome (`ok`, `fail`, wrong CSRF token) | redirect, with a success or error flash |
+| `SearchFlow`, a page past the last one | redirect to page 1, warning flash |
+| `InlineEditFlow` | see [InlineEditFlow](#inlineeditflow) |
+| Any redirect, on a request with a `Turbo-Frame` header | `200` Turbo Stream (`refresh` or `redirect`) |
+
+<a id="turbo-aware-redirects"></a>
+## Turbo-aware redirects
+
+Every flow redirects through `TurboAwareRedirector` (the `RedirectorInterface` service). Without a
+`Turbo-Frame` request header it sends a normal redirect. With one (a form submitted inside a frame, such
+as a modal) it answers `200` with a Turbo Stream, because a redirect would only reload that frame:
+
+| Redirect | With a `Turbo-Frame` header | Without |
+|----------|-----------------------------|---------|
+| To the success route (`forCreate`, `forUpdate`, `forFilter`, `forAction`) | `<turbo-stream action="refresh">`: the page reloads in place | redirect to the success URL |
+| To the success route, `forDelete()` or `forConfirm()` (smart navigation) | `<turbo-stream action="redirect" url="…">` when the success URL's path differs from the referer's; otherwise, or with no referer, `refresh` | redirect to the success URL |
+| To a handler's `RedirectTarget` | always `<turbo-stream action="redirect" url="…">` | redirect with the target's status |
+
+Smart navigation handles deleting a record from its own page: refreshing that page would show a record
+that no longer exists, so the flow navigates to the success route (the index, by default). Deleting the
+same record from the index refreshes the index in place.
+
+<a id="redirect-precedence"></a>
+### Redirect precedence
+
+A handler's `RedirectTarget` beats the context's `successRoute()`. Use `successRoute()` when the
+destination is known before the handler runs (the record being edited). Return a `RedirectTarget` when it
+depends on the outcome (the page of the record just created). `FormFlow` follows a target only when the
+handler succeeds; `ActionFlow` follows it whether the result is `ok` or `fail`.
+
+<a id="flashes"></a>
+## Flashes
+
+The flows flash the handler's `Result::message()`: `success()` when it is `ok`, `error()` when it fails.
+A `null` message means no flash (your `FlasherInterface` is called with `null` and ignores it). Two
+flows also add messages of their own:
+
+| Flow | Message | When |
+|------|---------|------|
+| `ActionFlow` (and `ConfirmFlow::execute()`, which uses it) | `Invalid CSRF token.` (error) | the posted `_token` does not match; the handler does not run |
+| `SearchFlow` | `Page N not found.` (warning) | the page is past the last one; the flow redirects to page 1, keeping the other query parameters |
+
+`InlineEditFlow` flashes its context's `successMessage` when `onSave` reports a change.
+
+<a id="embedded-forms"></a>
+## Embedded forms
+
+A `FormFlow` form can sit on another page in its own Turbo Frame (a reply form under a ticket) rather
+than on a page or in a modal of its own:
+
+- Render the form server-side as part of the host page, not lazily from a frame `src`, so it is part of
+  the page Turbo renders again after the submit. Create it in the host page's controller with its
+  `action` set to the flow's route, and wrap it in a `<turbo-frame>`.
+- Point the context's `->template()` at a template that renders just the form, for the `422` response
+  with errors, and its `successRoute()` at the host page.
+- Have the handler return no `RedirectTarget`. On success the flow then answers with a `refresh` stream,
+  which renders the host page again in place. A `RedirectTarget` always navigates.
+
+---
+
 <a id="flowcontext"></a>
 ## `FlowContext` reference
 
@@ -284,20 +425,25 @@ Create a context with a factory, then refine it fluently.
 
 | Factory | For | Notes |
 |---------|-----|-------|
-| `forCreate(FlowModel)` | `FormFlow` create | success route defaults to `…_index` |
+| `forCreate(FlowModel)` | `FormFlow` create | |
 | `forUpdate(FlowModel)` | `FormFlow` update | |
 | `forFilter(FlowModel)` | `FormFlow` filter form | |
 | `forSearch(FlowModel)` | `SearchFlow` | index operation |
 | `forAction(string $route, array $params = [])` | `ActionFlow` | no model, just a success route |
 | `forDelete(FlowModel)` | `ConfirmFlow` delete | CSRF key `delete`, smart navigation on |
-| `forConfirm(FlowModel, string $key)` | `ConfirmFlow` non-delete | CSRF key `$key` |
+| `forConfirm(FlowModel, string $key)` | `ConfirmFlow` non-delete | CSRF key `$key`, smart navigation on, operation `action` (pass `->template()`) |
+
+Smart navigation is described in [Turbo-aware redirects](#turbo-aware-redirects).
+
+Every factory that takes a `FlowModel`, except `forSearch()`, sets the success route to the model's
+`…_index` route; change it with `->successRoute()`.
 
 ### Fluent refinements
 
 | Method | Effect |
 |--------|--------|
-| `->template(string $path)` | override the rendered template |
-| `->successRoute(string $route, array $params = [])` | set the post-success redirect target |
+| `->template(string $path)` | render this template in place of `{templateDir}/{operation}.html.twig` (`FormFlow`, `ConfirmFlow`; `SearchFlow` ignores it) |
+| `->successRoute(string $route, array $params = [])` | set the post-success redirect target; a handler's `RedirectTarget` beats it |
 | `->csrf(string $tokenId)` | `ActionFlow` requires a matching `_token` before running the action |
 | `->allowDelete(bool)` | expose a delete affordance to the template |
 

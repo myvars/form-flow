@@ -35,9 +35,24 @@ All ship with a working default; override the ones you want to style.
 | `shared/form_flow/inline_edit_form.html.twig` | `InlineEditFlow` (edit) | `form`, `context`, `cancelUrl` |
 | `shared/form_flow/inline_edit_success.stream.html.twig` | `InlineEditFlow` (saved) | `context`; deprecated: `value`, `mirrorText` |
 
-`base` dispatches to the entity-specific template first (`{templateDir}/{op}.html.twig`, e.g.
-`demo/task/create.html.twig`), then to the generic `shared/form_flow/{op}.html.twig`, then to `missing`.
-So per-entity templates always win; the generic defaults are the fallback.
+<a id="template-resolution"></a>
+### Template resolution
+
+`base` includes the first of these that exists:
+
+1. `template`: the path given to `->template()`, or else `{templateDir}/{operation}.html.twig`
+   (e.g. `demo/task/create.html.twig`)
+2. `shared/form_flow/{operation}.html.twig`
+3. `shared/form_flow/missing.html.twig`
+
+So per-entity templates always win; the generic defaults are the fallback. `->template()` replaces step 1
+for `FormFlow` and `ConfirmFlow`. `SearchFlow` ignores it and always uses `{templateDir}/index.html.twig`,
+then `shared/form_flow/index.html.twig`. The chain is in `base.html.twig`, so an app that overrides `base`
+decides resolution for every flow.
+
+> **`forConfirm()` without `->template()` renders `missing.html.twig`.** Its operation is `action`, and
+> the bundle ships no `shared/form_flow/action.html.twig`. Unless you provide
+> `{templateDir}/action.html.twig`, always pass `->template()` with `forConfirm()`.
 
 > **Note:** the default `delete` and `index` templates assume the entity exposes `id`. Apps keyed on a
 > different identifier (e.g. `public_id`) should override those two.
@@ -139,7 +154,7 @@ overrides it:
 ```
 
 That override does not keep the deprecated mirror stream; an app still passing Closures that wants it
-copies the stream from the 1.4 template. `value` and `mirrorText` are deprecated: they are set only when the controller passes the value as a
-Closure, and are removed in 2.0.
+copies the stream from the 1.4 template. `value` and `mirrorText` are deprecated: they are set only when
+the controller passes the value as a Closure, and are removed in 2.0.
 
 That is the whole contract. Style the templates to match your application.

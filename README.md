@@ -48,7 +48,14 @@ This keeps the flows decoupled from your domain, your DTOs and your design syste
 ## Requirements
 
 - PHP 8.5+
-- Symfony 8.1+ (Form, HttpFoundation, Routing, Security CSRF, Twig, UX Turbo)
+- Symfony 8.1+ components: Config, DependencyInjection, Form, HttpFoundation, HttpKernel, ObjectMapper,
+  OptionsResolver, Routing and Security CSRF
+- Twig 3
+- Pagerfanta 4 (`pagerfanta/core`)
+- Symfony UX Turbo 3.1+
+
+Optional: `symfony/validator`, to check an inline edit against the entity property's rules
+(`InlineEditContext` `property`, see [inline editing](docs/flows.md#validating-against-the-entity)).
 
 ## Installation
 

@@ -146,7 +146,7 @@ final class FlashMessenger implements FlasherInterface
 
     public function error(Request $request, ?string $message): void
     {
-        $this->add($request, 'danger', $message);   // 'danger' aligns with Bootstrap's alert class
+        $this->add($request, 'danger', $message);   // the flash type is yours to choose
     }
 
     private function add(Request $request, string $type, ?string $message): void
@@ -165,7 +165,7 @@ If it's your only flasher, you're done. Otherwise, point the port at it:
 ```yaml
 # config/services.yaml
 services:
-    MyVars\FormFlow\Contract\FlasherInterface: '@App\Shared\UI\Http\FlashMessenger'
+    MyVars\FormFlow\Contract\FlasherInterface: '@App\Http\FlashMessenger'
 ```
 
 ---
@@ -189,7 +189,7 @@ interface SearchCriteriaInterface
 ```
 
 ```php
-namespace App\Shared\Application\Search;
+namespace App\Search;
 
 use MyVars\FormFlow\Contract\SearchCriteriaInterface as FormFlowSearchCriteriaInterface;
 
