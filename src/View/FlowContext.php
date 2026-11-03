@@ -215,18 +215,14 @@ final class FlowContext
     }
 
     /**
-     * Validate that required properties are set.
+     * Validate for form and confirm flows (needs model only).
      *
-     * @throws \LogicException if validation fails
+     * @throws \LogicException if model not configured
      */
     public function validate(): void
     {
         if (!$this->flowModel instanceof FlowModel) {
             throw new \LogicException('Model not configured.');
-        }
-
-        if (!$this->operation instanceof FormOperation) {
-            throw new \LogicException('Form operation not configured.');
         }
     }
 
