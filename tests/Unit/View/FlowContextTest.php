@@ -8,6 +8,7 @@ use MyVars\FormFlow\View\FlowContext;
 use MyVars\FormFlow\View\FlowModel;
 use MyVars\FormFlow\View\FlowRoutes;
 use MyVars\FormFlow\View\FormOperation;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -146,12 +147,29 @@ final class FlowContextTest extends TestCase
         self::assertSame('app_pricing_index', $ctx->getSuccessRoute());
     }
 
-    public function testValidateThrowsWhenModelMissing(): void
+    /**
+     * validate()'s "Form operation not configured." check is not here: every factory sets
+     * the operation, and a bare FlowContext has no model, so that check is never reached.
+     *
+     * @return iterable<string, array{\Closure(): void, string}>
+     */
+    public static function unconfiguredProvider(): iterable
     {
-        $ctx = FlowContext::forAction('app_order_show');
+        yield 'validate without a model' => [FlowContext::forAction('app_order_show')->validate(...), 'Model not configured.'];
+        yield 'validateForCommand without a success route' => [FlowContext::forSearch(FlowModel::simple('order'))->validateForCommand(...), 'Success route not configured.'];
+        yield 'validateForSearch without a model' => [FlowContext::forAction('app_order_show')->validateForSearch(...), 'Model not configured.'];
+    }
 
+    /**
+     * @param \Closure(): void $validate
+     */
+    #[DataProvider('unconfiguredProvider')]
+    public function testValidationRejectsAnUnconfiguredContext(\Closure $validate, string $message): void
+    {
         $this->expectException(\LogicException::class);
-        $ctx->validate();
+        $this->expectExceptionMessage($message);
+
+        $validate();
     }
 
     private function urlGenerator(): UrlGeneratorInterface

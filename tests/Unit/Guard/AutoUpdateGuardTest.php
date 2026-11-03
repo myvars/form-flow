@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace MyVars\FormFlow\Tests\Unit\Guard;
 
 use MyVars\FormFlow\Guard\AutoUpdateGuard;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Form\ClearableErrorsInterface;
 use Symfony\Component\Form\ClickableInterface;
 use Symfony\Component\Form\FormInterface;
 
@@ -52,5 +54,19 @@ final class AutoUpdateGuardTest extends TestCase
         $guard->clear($form); // must not throw when there is no auto-update button
 
         self::assertFalse($guard->is($form));
+    }
+
+    public function testClearClearsAllErrorsInAutoUpdateMode(): void
+    {
+        $button = $this->createStubForIntersectionOfInterfaces([FormInterface::class, ClickableInterface::class]);
+        $button->method('isClicked')->willReturn(true);
+
+        /** @var FormInterface<mixed>&ClearableErrorsInterface&MockObject $form */
+        $form = $this->createMockForIntersectionOfInterfaces([FormInterface::class, ClearableErrorsInterface::class]);
+        $form->method('has')->willReturn(true);
+        $form->method('get')->willReturn($button);
+        $form->expects($this->once())->method('clearErrors')->with(true);
+
+        new AutoUpdateGuard()->clear($form);
     }
 }

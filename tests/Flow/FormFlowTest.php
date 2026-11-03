@@ -183,6 +183,22 @@ final class FormFlowTest extends TestCase
         self::assertSame([], $flasher->successes);
     }
 
+    public function testMapperThatDoesNotReturnAnObjectIsAClearError(): void
+    {
+        $form = $this->formMock(true, true, ['x' => 1]);
+
+        $forms = $this->createStub(FormFactoryInterface::class);
+        $forms->method('create')->willReturn($form);
+
+        $flow = new FormFlow($forms, new RecordingFlasher(), new RecordingTwig(), $this->createStub(UrlGeneratorInterface::class), $this->createStub(RedirectorInterface::class), new AutoUpdateGuard());
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Mapper must return an object.');
+
+        // @phpstan-ignore argument.type (test uses a mock form type string)
+        $flow->form(Request::create('/order/new', 'POST'), 'FormType', [], fn (mixed $d): array => $d, fn () => self::fail('Handler must not run.'), FlowContext::forCreate(FlowModel::simple('order_item')));
+    }
+
     /**
      * @return FormInterface<mixed>
      */
