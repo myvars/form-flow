@@ -6,6 +6,8 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-03
+
 ### Fixed
 
 - `SearchFlow`: a page past the last one, requested inside a Turbo Frame, now reaches page 1. It used to
