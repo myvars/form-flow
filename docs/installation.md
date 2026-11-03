@@ -6,10 +6,12 @@
 composer require myvars/form-flow
 ```
 
-### Installing from a path repository (local development)
+The package is on [Packagist](https://packagist.org/packages/myvars/form-flow).
 
-While the package lives alongside your app rather than on Packagist, add it as a Composer
-[path repository](https://getcomposer.org/doc/05-repositories.md#path):
+### Working on the package and an app together
+
+To try a change to the package in an app before it is released, point the app at a local checkout with a
+Composer [path repository](https://getcomposer.org/doc/05-repositories.md#path):
 
 ```jsonc
 // composer.json
@@ -35,7 +37,7 @@ services:
             - ../form-flow:/form-flow   # vendor/myvars/form-flow -> ../../../form-flow
 ```
 
-For production, publish a tagged VCS repository (or private Packagist) instead of a path symlink.
+Remove the path repository and require a released version again before you commit the app.
 
 ## 2. Enable the bundle
 
@@ -49,8 +51,10 @@ return [
 ];
 ```
 
-The bundle registers the five flow services, the `TurboAwareRedirector`, the `AutoUpdateGuard` and the
-`InlineFieldType`. They are autowired into your controllers by type-hint.
+The bundle registers the five flow services, the `TurboAwareRedirector`
+([Turbo-aware redirects](flows.md#turbo-aware-redirects)), the `AutoUpdateGuard`
+([auto-update submits](flows.md#auto-update-submits)) and the `InlineFieldType`. They are autowired into
+your controllers by type-hint.
 
 ## 3. Provide the port adapters
 
@@ -70,7 +74,7 @@ no configuration. If you have several implementations, alias explicitly:
 ```yaml
 # config/services.yaml
 services:
-    MyVars\FormFlow\Contract\FlasherInterface: '@App\Shared\UI\Http\FlashMessenger'
+    MyVars\FormFlow\Contract\FlasherInterface: '@App\Http\FlashMessenger'
 ```
 
 ## 4. Templates (optional)

@@ -8,4 +8,5 @@
 /phpunit.xml.dist       export-ignore
 /phpstan.dist.neon      export-ignore
 /CONTRIBUTING.md        export-ignore
+/CLAUDE.md              export-ignore
 /CHANGELOG.md           export-ignore

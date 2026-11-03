@@ -48,7 +48,14 @@ This keeps the flows decoupled from your domain, your DTOs and your design syste
 ## Requirements
 
 - PHP 8.5+
-- Symfony 8.1+ (Form, HttpFoundation, Routing, Security CSRF, Twig, UX Turbo)
+- Symfony 8.1+ components: Config, DependencyInjection, Form, HttpFoundation, HttpKernel, ObjectMapper,
+  OptionsResolver, Routing and Security CSRF
+- Twig 3
+- Pagerfanta 4 (`pagerfanta/core`)
+- Symfony UX Turbo 3.1+
+
+Optional: `symfony/validator`, to check an inline edit against the entity property's rules
+(`InlineEditContext` `property`, see [inline editing](docs/flows.md#validating-against-the-entity)).
 
 ## Installation
 
@@ -71,14 +78,14 @@ Then provide the port adapters and templates — see **[docs/installation.md](do
 ## Documentation
 
 - **[Installation & wiring](docs/installation.md)** — bundle setup, the adapters you implement, path-repo/Docker notes
-- **[Using the flows](docs/flows.md)** — a worked controller example for every flow, plus `FlowContext`/`FlowModel`
+- **[Using the flows](docs/flows.md)** — a worked controller example for every flow; responses, Turbo-aware redirects and flashes; `FlowContext`/`FlowModel`
 - **[Ports & adapters](docs/adapters.md)** — implementing `Result`, `RedirectTarget`, `Flasher`, `SearchCriteria`
-- **[Template contract](docs/templates.md)** — required templates and the variables passed to them
+- **[Template contract](docs/templates.md)** — the templates the flows render, how to override them, and their variables
 
 ## Quality
 
 ```bash
-composer test        # PHPUnit — unit, flow and bundle-integration suites
+composer test        # PHPUnit — unit, flow, integration and template tests
 composer phpstan     # PHPStan level 7
 composer cs          # php-cs-fixer (dry-run)
 ```
