@@ -12,7 +12,7 @@ $finder = new Finder()
 return new Config()
     ->setRules([
         '@Symfony' => true,
-        'yoda_style' => false,
+        'yoda_style' => ['equal' => false, 'identical' => false, 'less_and_greater' => false],
         'concat_space' => ['spacing' => 'one'],
     ])
     ->setFinder($finder);
