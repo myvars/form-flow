@@ -4,17 +4,41 @@ Every flow is a stateless service you type-hint in a controller action. Each tak
 describing the run. This page shows a complete, copy-pasteable example for all five, then documents
 `FlowContext` and `FlowModel`.
 
+The examples use the `Task` resource that [getting started](getting-started.md) builds: every class they
+name (`TaskForm`, `TaskType`, the commands, mappers and handlers, `TaskSearchCriteria`,
+`TaskRepository`) is defined there, and the adapters (`Result`, `RedirectTarget`) on
+[Ports & adapters](adapters.md).
+
+- [Choosing a flow](#choosing-a-flow)
 - [FormFlow — create & update](#formflow)
 - [ActionFlow — state transitions](#actionflow)
 - [ConfirmFlow — confirm then execute](#confirmflow)
 - [SearchFlow — paginated index](#searchflow)
+- [Filter forms](#filter-forms)
 - [InlineEditFlow — inline field editing](#inlineeditflow)
 - [Responses](#responses)
 - [Turbo-aware redirects](#turbo-aware-redirects)
 - [Flashes](#flashes)
 - [Embedded forms](#embedded-forms)
+- [Testing your controllers](#testing)
 - [`FlowContext` reference](#flowcontext)
 - [`FlowModel` reference](#flowmodel)
+
+<a id="choosing-a-flow"></a>
+## Choosing a flow
+
+| The action… | Flow | Context |
+|-------------|------|---------|
+| lists records, paged | `SearchFlow::search()` | `forSearch()` |
+| narrows that list with a form | `FormFlow::form()`, the criteria as data | `forFilter()` ([filter forms](#filter-forms)) |
+| creates or edits a record with a form | `FormFlow::form()` | `forCreate()`, `forUpdate()` |
+| changes state with one button and no form (complete, approve) | `ActionFlow::process()` | `forAction()->csrf()` |
+| asks "are you sure?" first (delete, cancel, archive) | `ConfirmFlow::confirm()`, then `execute()` | `forDelete()`, `forConfirm()` |
+| edits one field in place | `InlineEditFlow::handleField()` | `InlineEditContext::create()` |
+| only displays a record | none: render a template | |
+
+A form with several fields is `FormFlow` even when it changes state. A single field the user edits in
+place, where saving needs no handler logic beyond setting the value, is `InlineEditFlow`.
 
 ---
 
@@ -125,7 +149,7 @@ public function complete(Request $request, Task $task, CompleteTaskHandler $hand
 {
     return $flow->process(
         request: $request,
-        command: new CompleteTask($task->getId()),
+        command: new CompleteTask((int) $task->getId()),
         handler: $handler,
         context: FlowContext::forAction('app_demo_task_show', ['id' => (string) $task->getId()])
             ->csrf('complete' . $task->getId()),
@@ -175,7 +199,7 @@ public function delete(Request $request, Task $task, DeleteTaskHandler $handler,
 {
     return $flow->execute(
         request: $request,
-        command: new DeleteTask($task->getId()),
+        command: new DeleteTask((int) $task->getId()),
         handler: $handler,
         context: FlowContext::forDelete(FlowModel::create('demo', 'task')),
     );
@@ -214,7 +238,7 @@ public function search(Request $request, AdapterInterface $adapter, SearchCriter
 ```
 
 ```php
-#[Route('/task/', name: 'app_demo_task_index', methods: ['GET'])]
+#[Route('/task', name: 'app_demo_task_index', methods: ['GET'])]
 public function index(
     Request $request,
     TaskRepository $repository,
@@ -232,7 +256,52 @@ public function index(
 
 > `SearchFlow` takes an **adapter**, not a repository — it never touches persistence. Your repository's
 > `findByCriteria()` returns the Pagerfanta adapter; the flow paginates it. `TaskSearchCriteria`
-> implements your app's `SearchCriteriaInterface`, which `extends` the package port.
+> extends the app's [`SearchCriteria` base](adapters.md#criteria), which implements the package port.
+
+---
+
+<a id="filter-forms"></a>
+## Filter forms
+
+A filter is a `FormFlow` form whose data is the index's search criteria. Its handler doesn't change
+anything: it returns a `RedirectTarget` to the index with the chosen values as query parameters. The
+filtered index is then an ordinary `GET` URL, which can be bookmarked, shared and paged, while the filter
+form gets what any form gets (validation, a 422 with its errors).
+
+```php
+#[Route('/task/search/filter', name: 'app_demo_task_search_filter', methods: ['GET', 'POST'])]
+public function searchFilter(
+    Request $request,
+    TaskFilterHandler $handler,
+    FormFlow $flow,
+    #[MapQueryString] TaskSearchCriteria $criteria = new TaskSearchCriteria(),
+): Response {
+    return $flow->form(
+        request: $request,
+        formType: TaskFilterType::class,
+        data: $criteria,
+        mapper: static fn (TaskSearchCriteria $criteria): TaskSearchCriteria => $criteria,
+        handler: $handler,
+        context: FlowContext::forFilter(FlowModel::create('demo', 'task')),
+    );
+}
+```
+
+- **Route:** `FlowModel` names it `{prefix}_search_filter`, and templates get it as `routes.filter`.
+  Link to it with the index's current query string (`path(routes.filter, app.request.query.all)`), and
+  `#[MapQueryString]` fills the criteria, so the form opens with the current values.
+- **Form type:** `data_class` is the criteria class. Hidden fields carry the values the filter shouldn't
+  drop (the search query, the sort); leave out the page, so a new filter starts at page 1.
+- **Mapper:** the criteria already are the data the handler needs, so the mapper can pass them through.
+  An app that keeps a command class per handler maps the criteria to a filter command instead.
+- **Handler:** returns `Result::ok(redirect: new RedirectTarget('app_demo_task_index', $params))`, with
+  `$params` built from the criteria's getters, leaving out empty values. `TaskFilterHandler` in
+  [getting started](getting-started.md#filter) is a complete one.
+- **Response:** a `303` to the index. Inside a Turbo Frame (a filter in a modal), a `RedirectTarget`
+  always answers with a `redirect` stream, so the whole page navigates
+  ([Turbo-aware redirects](#turbo-aware-redirects)).
+- **Template:** `shared/form_flow/filter.html.twig` renders the whole form; override it per entity at
+  `{templateDir}/filter.html.twig`.
 
 ---
 
@@ -260,7 +329,7 @@ public function inlineTitle(Request $request, Task $task, InlineEditFlow $flow, 
     return $flow->handleField(
         request: $request,
         value: $task->getTitle(),
-        onSave: function (mixed $value) use ($task, $em): bool {
+        onSave: function (?string $value) use ($task, $em): bool {
             $changed = $task->getTitle() !== $value;
             $task->rename((string) $value);
             $em->flush();
@@ -428,6 +497,36 @@ than on a page or in a modal of its own:
   which renders the host page (the browser's current URL) again in place. A `RedirectTarget` always
   navigates. Set `successRoute()` to the host page too, for a submit outside a frame.
 
+<a id="testing"></a>
+## Testing your controllers
+
+The flows are tested in this package, so an app's tests check its own wiring: that each route reaches
+its flow, renders its template, and turns each handler outcome into the right response. Test the
+handlers on their own as well; they are plain invokable classes, with no request involved.
+
+For the controllers, write functional tests with Symfony's `WebTestCase`. Assert the statuses from
+[Responses](#responses):
+
+| Case | Assert |
+|------|--------|
+| A valid create or update | `assertResponseRedirects($url, 303)`, then the success flash on the followed page |
+| An invalid submit, or a handler `fail` | `assertResponseStatusCodeSame(422)`, and the form error or error flash |
+| An action or delete with a wrong or missing token | a redirect to the success route, `Invalid CSRF token.` on the followed page, and the data unchanged |
+| An action reached with `GET` | `405`, from the route's `methods: ['POST']` |
+
+- **CSRF tokens:** request the page that renders the form, then submit it through the crawler
+  (`$client->submitForm('Delete')`), so the token is the one the page issued, as in a browser. To test a
+  missing token, post to the route directly.
+- **Frame requests:** to test what a request inside a Turbo Frame gets, send the headers Turbo sends:
+  `HTTP_TURBO_FRAME` with the frame id, and, for a form submit, `HTTP_ACCEPT` listing
+  `text/vnd.turbo-stream.html`. Assert a `200` whose body holds the `<turbo-stream action="refresh">`
+  or `action="redirect"` the [redirector](#turbo-aware-redirects) chose.
+- **Inline edits:** `InlineEditFlow` reads no Turbo headers. Request the edit form with `?edit=1`,
+  submit it with `inline_field[value]`, and assert the `refresh` stream and the stored value, or a 422
+  for a value that breaks the property's rules.
+
+[Getting started](getting-started.md#test-it) has a complete test class for the `Task` controller.
+
 ---
 
 <a id="flowcontext"></a>
@@ -441,7 +540,7 @@ Create a context with a factory, then refine it fluently.
 |---------|-----|-------|
 | `forCreate(FlowModel)` | `FormFlow` create | |
 | `forUpdate(FlowModel)` | `FormFlow` update | |
-| `forFilter(FlowModel)` | `FormFlow` filter form | |
+| `forFilter(FlowModel)` | `FormFlow` filter form | see [filter forms](#filter-forms) |
 | `forSearch(FlowModel)` | `SearchFlow` | index operation |
 | `forAction(string $route, array $params = [])` | `ActionFlow` | no model, just a success route |
 | `forDelete(FlowModel)` | `ConfirmFlow` delete | CSRF key `delete`, smart navigation on |

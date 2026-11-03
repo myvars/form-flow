@@ -6,10 +6,11 @@ same handle-form, flash and redirect logic in every action.
 
 ## Contents
 
-1. [Installation & wiring](installation.md)
-2. [Using the flows](flows.md)
-3. [Ports & adapters](adapters.md)
-4. [Template contract](templates.md)
+1. [Getting started](getting-started.md): one resource end to end, in a new app
+2. [Installation & wiring](installation.md)
+3. [Using the flows](flows.md)
+4. [Ports & adapters](adapters.md)
+5. [Template contract](templates.md)
 
 ## Concepts
 
@@ -25,7 +26,7 @@ success route, CSRF key, redirect behaviour. Build it with a factory (`forCreate
 convention (`FlowModel::create('catalog', 'product')`), so you don't repeat strings.
 
 **Ports** (`Contract\*`) are the only contracts the flows depend on. The application provides one
-adapter per port; Symfony autowires them. This is what keeps the package free of application code.
+adapter per port ([Ports & adapters](adapters.md)). This is what keeps the package free of application code.
 
 **Templates** are rendered from documented paths. The bundle ships design-neutral defaults at those paths,
 so the flows render out of the box, and the application overrides any of them with its own styled version
