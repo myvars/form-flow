@@ -83,3 +83,24 @@ The bundle ships **design-neutral default templates**, so the flows render out o
 required here. To style them, override any by providing your own at the same path
 (`templates/shared/form_flow/...`); your app's `templates/` wins. See the **[templates guide](templates.md)**
 for the full list and the variables each receives.
+
+<a id="redirect-stream-action"></a>
+## 5. Register the `redirect` stream action
+
+For a form submitted inside a Turbo Frame (a modal, say), `TurboAwareRedirector` can answer with
+`<turbo-stream action="redirect" url="…">` to navigate the whole page
+([Turbo-aware redirects](flows.md#turbo-aware-redirects)). `redirect` is not one of Turbo's built-in
+[stream actions](https://turbo.hotwired.dev/reference/streams), and Symfony UX Turbo doesn't add it.
+Without your own, Turbo rejects the stream with an `unknown action` error: the flash is set but the page
+doesn't move. Register it once in your JavaScript entry point (Turbo 7.2+, which exports `StreamActions`):
+
+```js
+// assets/app.js
+import { StreamActions, visit } from '@hotwired/turbo';
+
+StreamActions.redirect = function () {
+    visit(this.getAttribute('url'), { action: 'advance' });
+};
+```
+
+Keep it a `function`, not an arrow function: Turbo calls it with the `<turbo-stream>` element as `this`.

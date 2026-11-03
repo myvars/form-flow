@@ -376,6 +376,10 @@ gets a normal redirect, which Turbo follows inside the frame:
 | To the success route, `forDelete()` or `forConfirm()` (smart navigation) | `<turbo-stream action="redirect" url="…">` when the success URL's path differs from the referer's; otherwise, or with no referer, `refresh` | redirect to the success URL |
 | To a handler's `RedirectTarget` | always `<turbo-stream action="redirect" url="…">` | redirect with the target's status |
 
+Turbo has no built-in `redirect` action: your app must
+[register `StreamActions.redirect`](installation.md#redirect-stream-action), or Turbo rejects these
+streams with an `unknown action` error and the page doesn't move.
+
 A page past the last one makes `SearchFlow` redirect to the index route with `page=1`. That request is a
 `GET`, so inside a frame (pagination or a search form targeting it) it is a normal redirect too, and the
 frame shows page 1. Turbo renders only the frame from that response, so the `Page N not found.` flash
