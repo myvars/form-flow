@@ -28,10 +28,15 @@
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.95",
-        "phpstan/phpstan": "^2.2",
-        "phpstan/phpstan-symfony": "^2.0",
-        "phpunit/phpunit": "^13.1",
+        "phpstan/phpstan": "^2.3",
+        "phpstan/phpstan-symfony": "^2.1",
+        "phpunit/phpunit": "^13.4",
         "symfony/validator": "^8.1"
+    },
+    "conflict": {
+        "symfony/event-dispatcher-contracts": "<2.5.3 || >=3.0,<3.4.1",
+        "symfony/property-info": "<6.4.3 || >=7.0,<7.0.3",
+        "symfony/translation-contracts": "<2.5.3 || >=3.0,<3.4.2"
     },
     "suggest": {
         "symfony/validator": "Checks an inline edit against the entity property's rules (InlineEditContext property)"
