@@ -148,9 +148,6 @@ final class FlowContextTest extends TestCase
     }
 
     /**
-     * validate()'s "Form operation not configured." check is not here: every factory sets
-     * the operation, and a bare FlowContext has no model, so that check is never reached.
-     *
      * @return iterable<string, array{\Closure(): void, string}>
      */
     public static function unconfiguredProvider(): iterable
