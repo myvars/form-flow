@@ -66,16 +66,19 @@ each; see **[Ports & adapters](adapters.md)** for full examples.
 | `ResultInterface` | the DTO your command handlers return |
 | `RedirectTargetInterface` | a forced-redirect DTO |
 | `FlasherInterface` | your flash-message helper |
-| `SearchCriteriaInterface` | your search-criteria base interface `extends` this |
+| `SearchCriteriaInterface` | the base class of your search criteria |
 
-Symfony automatically aliases an interface to its single implementation, so a sole adapter usually needs
-no configuration. If you have several implementations, alias explicitly:
+The flows inject only `FlasherInterface`. Alias it to your adapter; Symfony doesn't create the alias by
+itself, even for a single implementation:
 
 ```yaml
 # config/services.yaml
 services:
-    MyVars\FormFlow\Contract\FlasherInterface: '@App\Http\FlashMessenger'
+    # ...
+    MyVars\FormFlow\Contract\FlasherInterface: '@App\Flow\FlashMessenger'
 ```
+
+The other three need no configuration.
 
 ## 4. Templates (optional)
 
