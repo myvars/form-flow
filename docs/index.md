@@ -6,10 +6,11 @@ same handle-form, flash and redirect logic in every action.
 
 ## Contents
 
-1. [Installation & wiring](installation.md)
-2. [Using the flows](flows.md)
-3. [Ports & adapters](adapters.md)
-4. [Template contract](templates.md)
+1. [Getting started](getting-started.md): one resource end to end, in a new app
+2. [Installation & wiring](installation.md)
+3. [Using the flows](flows.md)
+4. [Ports & adapters](adapters.md)
+5. [Template contract](templates.md)
 
 ## Concepts
 
