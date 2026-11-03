@@ -32,7 +32,8 @@ How each test is written. Bring a test in line when you change it.
 
 ## Conventions
 
-- Code style: `@Symfony` rules, no Yoda conditions, spaced concatenation (`'a' . $b`).
+- Code style: `@Symfony` rules, no Yoda conditions (`$value === null`, not `null === $value`;
+  `composer cs` rejects them, `composer cs-fix` rewrites them), spaced concatenation (`'a' . $b`).
 - Full type hints on every method; `readonly` and constructor promotion where possible.
 - The package must depend only on framework packages and its own `Contract\` ports —
   never on a consuming application's classes. Tests use the doubles in `tests/Double/`.
