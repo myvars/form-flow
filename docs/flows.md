@@ -247,7 +247,7 @@ whether anything changed.
 public function handleField(
     Request $request,
     mixed $value,                          // current field value (a Closure returning it is deprecated, see below)
-    callable $onSave,                      // fn(mixed $value): ?bool — apply + persist; return "changed?" (null counts as changed)
+    callable $onSave,                      // fn(?string $value): ?bool — apply + persist; return "changed?" (null counts as changed)
     InlineEditContext $context,
     array $formOptions = [],               // InlineFieldType options (constraints, field_type, …)
 ): Response;

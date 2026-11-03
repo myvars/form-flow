@@ -202,6 +202,43 @@ final class InlineEditFlowTest extends TestCase
     /**
      * @return iterable<string, array{mixed, string|null}>
      */
+    public static function startingValueProvider(): iterable
+    {
+        yield 'int' => [42, '42'];
+        yield 'float' => [1.5, '1.5'];
+        yield 'true' => [true, '1'];
+        yield 'false' => [false, ''];
+        yield 'stringable' => [new class implements \Stringable {
+            public function __toString(): string
+            {
+                return 'SKU-1';
+            }
+        }, 'SKU-1'];
+        yield 'null' => [null, null];
+    }
+
+    #[DataProvider('startingValueProvider')]
+    public function testScalarStartingValueSeedsTheFormAsText(mixed $value, ?string $expected): void
+    {
+        $request = Request::create('/sample/1/inline/stock', 'GET', ['edit' => '1']);
+
+        $forms = $this->createMock(FormFactoryInterface::class);
+        $forms->expects($this->once())->method('create')
+            ->with($this->anything(), new InlineFieldForm($expected))
+            ->willReturn($this->formMock(false, false, $expected));
+
+        $twig = $this->createStub(Environment::class);
+        $twig->method('render')->willReturn('<form>edit</form>');
+
+        $response = new InlineEditFlow($forms, new RecordingFlasher(), $twig)
+            ->handleField($request, $value, fn ($v): bool => true, $this->context());
+
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+    }
+
+    /**
+     * @return iterable<string, array{mixed, string|null}>
+     */
     public static function savedValueProvider(): iterable
     {
         yield 'string' => ['Widget', 'Widget'];

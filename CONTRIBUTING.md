@@ -34,7 +34,8 @@ How each test is written. Bring a test in line when you change it.
 
 - Code style: `@Symfony` rules, no Yoda conditions (`$value === null`, not `null === $value`;
   `composer cs` rejects them, `composer cs-fix` rewrites them), spaced concatenation (`'a' . $b`).
-- `declare(strict_types=1)` in every new file. Most of `src/` predates the rule and does not have it yet.
+- `declare(strict_types=1)` in every file (`composer cs` rejects a file without it, `composer cs-fix`
+  adds it).
 - Full type hints on every method; `readonly` and constructor promotion where possible, services
   included. On PHP 8.4+ Symfony makes lazy services with native lazy objects, which work with
   `final readonly` classes.

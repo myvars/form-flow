@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace MyVars\FormFlow\InlineEdit;
 
 use MyVars\FormFlow\Contract\FlasherInterface;
@@ -67,9 +69,9 @@ final readonly class InlineEditFlow
      * refresh replaces. It still works: the flow calls it for the form's starting value and again
      * after onSave, and gives the result to the success template as `value` and `mirrorText`.
      *
-     * @param mixed|\Closure(): mixed      $value       Current field value (a Closure returning it is deprecated)
-     * @param callable(mixed): (bool|null) $onSave      Apply the new value and persist; return whether it changed
-     * @param array<string, mixed>         $formOptions Options for InlineFieldType (constraints, field_type, etc.)
+     * @param mixed|\Closure(): mixed        $value       Current field value (a Closure returning it is deprecated)
+     * @param callable(?string): (bool|null) $onSave      Apply the submitted text and persist; return whether it changed
+     * @param array<string, mixed>           $formOptions Options for InlineFieldType (constraints, field_type, etc.)
      */
     public function handleField(
         Request $request,
@@ -102,7 +104,7 @@ final readonly class InlineEditFlow
         }
         $current = $read !== null ? $read() : $value;
 
-        $form = $this->forms->create(InlineFieldType::class, new InlineFieldForm($current), $formOptions);
+        $form = $this->forms->create(InlineFieldType::class, new InlineFieldForm(self::formText($current)), $formOptions);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid() && $this->satisfiesEntityRules($form, $context)) {
@@ -223,6 +225,15 @@ final readonly class InlineEditFlow
         return new Response($html, Response::HTTP_OK, [
             'Content-Type' => 'text/vnd.turbo-stream.html; charset=UTF-8',
         ]);
+    }
+
+    /**
+     * The starting value as the form's text, converted as PHP's coercive mode converts it to ?string.
+     * Any other value is passed on unchanged and rejected by InlineFieldForm.
+     */
+    private static function formText(mixed $value): mixed
+    {
+        return \is_scalar($value) || $value instanceof \Stringable ? (string) $value : $value;
     }
 
     /**

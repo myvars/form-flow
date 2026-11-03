@@ -29,7 +29,7 @@ app's layering) belong in that app's docs, which link here.
 
 Follow [CONTRIBUTING.md › Conventions](CONTRIBUTING.md#conventions). The rules most easily missed:
 
-- `declare(strict_types=1)` in every new file; most of `src/` predates the rule.
+- `declare(strict_types=1)` in every file; the fixer enforces it.
 - `readonly` services are fine (PHP 8.4+ native lazy objects); don't remove it to allow a lazy proxy.
 - **No request data in a service property.** Long-running workers (FrankenPHP worker mode, Messenger)
   reuse one flow instance across requests.

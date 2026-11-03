@@ -21,6 +21,13 @@ All notable changes to `myvars/form-flow` are documented here. The format is bas
   Functional tests that send only a `Turbo-Frame` header and expect a stream must now also send
   `Accept: text/vnd.turbo-stream.html`. A flash set before such a redirect shows only if the app renders
   flashes in the frame's response.
+- Every file in `src/` now declares `strict_types=1`, and PHP-CS-Fixer enforces it. This changes the
+  calls the package makes, including its calls to an app's callbacks, not the app's calls into it.
+  `InlineEditFlow::handleField()` still accepts an int, float, bool or `Stringable` `$value` and turns it
+  into the form's text, as before. Its `onSave` callback receives the submitted value as `?string`: a
+  callback that declares `int` or `float` for it used to have the string coerced and now gets a
+  `TypeError`, which the flow shows as a form error. Leave the parameter untyped or type it `?string`,
+  and convert the value in the callback.
 
 ## [1.5.0] - 2026-10-26
 
