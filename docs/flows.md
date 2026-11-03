@@ -149,7 +149,7 @@ public function complete(Request $request, Task $task, CompleteTaskHandler $hand
 {
     return $flow->process(
         request: $request,
-        command: new CompleteTask($task->getId()),
+        command: new CompleteTask((int) $task->getId()),
         handler: $handler,
         context: FlowContext::forAction('app_demo_task_show', ['id' => (string) $task->getId()])
             ->csrf('complete' . $task->getId()),
@@ -199,7 +199,7 @@ public function delete(Request $request, Task $task, DeleteTaskHandler $handler,
 {
     return $flow->execute(
         request: $request,
-        command: new DeleteTask($task->getId()),
+        command: new DeleteTask((int) $task->getId()),
         handler: $handler,
         context: FlowContext::forDelete(FlowModel::create('demo', 'task')),
     );
@@ -238,7 +238,7 @@ public function search(Request $request, AdapterInterface $adapter, SearchCriter
 ```
 
 ```php
-#[Route('/task/', name: 'app_demo_task_index', methods: ['GET'])]
+#[Route('/task', name: 'app_demo_task_index', methods: ['GET'])]
 public function index(
     Request $request,
     TaskRepository $repository,
@@ -329,7 +329,7 @@ public function inlineTitle(Request $request, Task $task, InlineEditFlow $flow, 
     return $flow->handleField(
         request: $request,
         value: $task->getTitle(),
-        onSave: function (mixed $value) use ($task, $em): bool {
+        onSave: function (?string $value) use ($task, $em): bool {
             $changed = $task->getTitle() !== $value;
             $task->rename((string) $value);
             $em->flush();
@@ -521,8 +521,9 @@ For the controllers, write functional tests with Symfony's `WebTestCase`. Assert
   `HTTP_TURBO_FRAME` with the frame id, and, for a form submit, `HTTP_ACCEPT` listing
   `text/vnd.turbo-stream.html`. Assert a `200` whose body holds the `<turbo-stream action="refresh">`
   or `action="redirect"` the [redirector](#turbo-aware-redirects) chose.
-- **Inline edits:** request the edit form with `?edit=1` and the frame header, submit it with
-  `inline_field[value]`, and assert the stream, or a 422 for a value that breaks the property's rules.
+- **Inline edits:** `InlineEditFlow` reads no Turbo headers. Request the edit form with `?edit=1`,
+  submit it with `inline_field[value]`, and assert the `refresh` stream and the stored value, or a 422
+  for a value that breaks the property's rules.
 
 [Getting started](getting-started.md#test-it) has a complete test class for the `Task` controller.
 

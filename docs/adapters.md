@@ -2,7 +2,7 @@
 
 FormFlow does not depend on your application's classes. Instead it defines four small **ports**
 (interfaces in `MyVars\FormFlow\Contract\`) and expects the application to supply an **adapter** for
-each. You write each one once; Symfony wires them up.
+each. You write each one once.
 
 This keeps the package upgradeable, testable and reusable without reaching into your domain, and means
 your domain never has to import a vendor DTO.
@@ -18,9 +18,8 @@ Each block below is a whole file, at the path in its first line; add `<?php` at 
 namespace is only a suggestion. If your app already has a result DTO, a flash helper or search
 criteria, see [Adding the ports to existing classes](#existing-classes) instead.
 
-The flows inject only one port, `FlasherInterface`, and it needs an alias in `config/services.yaml`
-([below](#flasher-alias)). Handlers create results and redirect targets themselves, and controllers
-receive search criteria from the request, so the other three need no configuration.
+Only `FlasherInterface` needs configuration ([an alias](#flasher-alias)); the flows never inject the
+other three.
 
 ---
 

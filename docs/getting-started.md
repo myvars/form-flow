@@ -414,7 +414,8 @@ final class UpdateTaskMapper
 ```
 
 The handlers do the work and return a `Result`. Its message becomes the flash. A failed result
-re-renders the form with a 422. `CreateTaskHandler` checks the entity's rules, which catch what the form
+re-renders a form with a 422; from an action or a delete, which have no form, it redirects with an
+error flash. `CreateTaskHandler` checks the entity's rules, which catch what the form
 model can't, such as a duplicate title, and on success sends the user to the new task with a
 `RedirectTarget`.
 
@@ -822,6 +823,9 @@ Three habits keep flow controllers easy to read: call the flows with named argum
 `FlowModel` in one private `model()` method, and keep each action to the one `return $flow->…` call,
 with flashes and redirects left to the flow and the handler.
 
+This controller is open to anyone. A real one checks access first, for example with `#[IsGranted]` on
+the class or on each action; the flows run after that check.
+
 <a id="templates"></a>
 ## 11. The templates
 
@@ -952,9 +956,8 @@ in this guide needs it.
 <a id="test-it"></a>
 ## 13. Test it
 
-The flows are tested in this package. Your tests check your wiring: the routes, the templates, and what
-each handler's outcome looks like over HTTP. A functional test drives the app as a browser would, so the
-CSRF tokens come from the pages that render them.
+A functional test drives the app as a browser would, so the CSRF tokens come from the pages that render
+them.
 
 ```bash
 composer require --dev symfony/test-pack
@@ -1006,6 +1009,8 @@ final class TaskControllerTest extends WebTestCase
         $this->client->submitForm('Save', ['task[title]' => '']);
 
         self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('form', 'This value should not be blank.');
+        self::assertSame(0, $this->em->getRepository(Task::class)->count());
     }
 
     public function testCreateWithATakenTitleShowsTheHandlersError(): void
@@ -1017,6 +1022,19 @@ final class TaskControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(422);
         self::assertSelectorTextContains('.flash-danger', 'There is already a task with this title.');
+    }
+
+    public function testMarkDoneCompletesTheTask(): void
+    {
+        $task = $this->addTask('Write the docs');
+
+        $this->client->request('GET', '/task/' . $task->getId());
+        $this->client->submitForm('Mark done');
+
+        self::assertResponseRedirects('/task/' . $task->getId(), 303);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.flash-success', 'Task done');
+        self::assertSelectorNotExists('button:contains("Mark done")');
     }
 
     public function testMarkDoneRejectsAPostWithoutAToken(): void
@@ -1042,20 +1060,30 @@ final class TaskControllerTest extends WebTestCase
         self::assertNull($this->em->getRepository(Task::class)->find($task->getId()));
     }
 
-    public function testInlineSaveInAFrameAnswersWithARefreshStream(): void
+    public function testFilterRedirectsToTheFilteredIndex(): void
+    {
+        $this->addTask('Write the docs');
+
+        $this->client->request('GET', '/task?query=docs');
+        $this->client->clickLink('Filter');
+        $this->client->submitForm('Filter', ['task_filter[done]' => '0']);
+
+        self::assertResponseRedirects('/task?query=docs&sort=id&sortDirection=ASC&done=0', 303);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('tbody', 'Write the docs');
+    }
+
+    public function testInlineSaveAnswersWithARefreshStream(): void
     {
         $task = $this->addTask('Write the docs');
-        $frame = ['HTTP_TURBO_FRAME' => 'inline-edit-task-' . $task->getId() . '-title'];
 
-        $crawler = $this->client->request('GET', '/task/' . $task->getId() . '/inline/title?edit=1', server: $frame);
-        $this->client->submit(
-            $crawler->selectButton('Save')->form(),
-            ['inline_field[value]' => 'Write better docs'],
-            $frame + ['HTTP_ACCEPT' => 'text/vnd.turbo-stream.html, text/html'],
-        );
+        $this->client->request('GET', '/task/' . $task->getId() . '/inline/title?edit=1');
+        $this->client->submitForm('Save', ['inline_field[value]' => 'Write better docs']);
 
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('<turbo-stream action="refresh"', (string) $this->client->getResponse()->getContent());
+        $this->em->clear();
+        self::assertSame('Write better docs', $this->em->getRepository(Task::class)->find($task->getId())?->getTitle());
     }
 
     private function addTask(string $title): Task
