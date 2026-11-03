@@ -11,7 +11,7 @@ use Symfony\UX\Turbo\TurboBundle;
 
 /**
  * Turbo‑aware redirector that:
- *  - Detects Turbo requests via headers/format/accept.
+ *  - Detects Turbo frame requests that accept a Turbo stream (Turbo-Frame header and Accept).
  *  - Emits a Turbo stream refresh response when appropriate.
  *  - Navigates away when the target URL differs from the referer (e.g., delete from show page).
  *  - Falls back to a normal RedirectResponse otherwise.
@@ -32,7 +32,12 @@ final readonly class TurboAwareRedirector implements RedirectorInterface
         // instead of the parent page, so we fall back to a regular redirect.
         $hasTurboFrameHeader = $request->headers->has('turbo-frame') || $request->headers->has('Turbo-Frame');
 
-        if ($hasTurboFrameHeader) {
+        // Turbo accepts a stream for a form submission (POST etc.), and for a GET only when the link or form
+        // opts in with data-turbo-stream. A plain frame navigation (pagination, a GET search form) follows a
+        // normal redirect and renders the target inside the frame.
+        $acceptsTurboStream = in_array(self::TURBO_STREAM_MIME, $request->getAcceptableContentTypes(), true);
+
+        if ($hasTurboFrameHeader && $acceptsTurboStream) {
             // Tell Symfony to emit Turbo Stream.
             $request->setRequestFormat(TurboBundle::STREAM_FORMAT);
 
